@@ -1,0 +1,700 @@
+{
+  "name": "YouTube-RSS-Puller",
+  "nodes": [
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "8159d367-513c-406b-8ad7-36f65c2e6512",
+              "name": "rss_feed_url",
+              "type": "string",
+              "value": "=https://www.youtube.com/feeds/videos.xml?channel_id={{ $json.youtube_channel_id }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6d4bebb0-37b1-4d17-8be6-5e4238d59bc8",
+      "name": "Create RSS Feed URLs1",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        1360,
+        240
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.rss_feed_url }}",
+        "options": {
+          "ignoreSSL": false
+        }
+      },
+      "id": "19bcf000-5a7e-40d9-9a01-f2231084fde2",
+      "name": "RSS Read  - Max 15 Latest Videos per Channel",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "position": [
+        1600,
+        240
+      ],
+      "typeVersion": 1.1
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "ids",
+        "options": {
+          "destinationFieldName": "youtube_channel_id"
+        }
+      },
+      "id": "1be08fc0-a1e6-4871-8e52-a414dcec2fef",
+      "name": "Create List of Channel Ids",
+      "type": "n8n-nodes-base.splitOut",
+      "position": [
+        1168,
+        240
+      ],
+      "typeVersion": 1
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "73b9220c-d701-4a29-8aaf-3732d1db0ce6",
+              "name": "ids",
+              "type": "array",
+              "value": "=[ \"UCTrwtSCIyCC5zTcNlVWJddg\", \"UClBMLpP3UHXLmgEypMmXPuA\",\"UCSxjNbPriyBh9RNl_QNSAtw\",\"UCHBRejs5fKvGxsl_rNiFe_Q\",\"UCvJZEG5x-DVYZKTz--pS39w\",\"UCRvqjQPSeaWn-uEx-w0XOIg\",\"UC2Zg12phLyX1KTnH6D47d9g\",\"UClgJyzwGs-GyaNxUHcLZrkg\",\"UC6LOhJgSKMn0sPIWhsdpLrg\",\"UC12lnsYNt8_VthTNOuOGTmQ\",\"UCyTSwVh66Y2Ww_CIIHhuxbw\",\"UCBRpqrzuuqE8TZcWw75JSdw\",\"UCOHxDwCcOzBaLkeTazanwcw\",\"UCUvvj5lwue7PspotMDjk5UA\",\"UCyqlbzLoYtpqDXwRI9Yh5LA\",\"UCQxFhbPxp6VtAMGEF8OWG5g\",\"UC0hYXZl0xei6bj19ilOQprw\",\"UC-jIhZaxorxp2_TXJaWKZcQ\",\"UC7kCeZ53sli_9XwuQeFxLqw\",\"UCty4n3i_1WUdtoJyxHJ6xmQ\",\"UCrGLm-Drgv0vbbemwwHeXJw\",\"UChJdn-FOTmTc7nm-msFTqTQ\"]"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f4b206fb-47f9-4a76-8b8e-c64388917589",
+      "name": "YouTube Channel Ids",
+      "type": "n8n-nodes-base.set",
+      "position": [
+        960,
+        240
+      ],
+      "typeVersion": 3.4
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        448,
+        -80
+      ],
+      "id": "5f5766cc-52af-4c74-826a-4455d09786b3",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "resource": "video",
+        "operation": "get",
+        "videoId": "={{ $json.id.replace(\"yt:video:\", \"\") }}",
+        "part": [
+          "contentDetails",
+          "snippet",
+          "id",
+          "player"
+        ],
+        "options": {}
+      },
+      "id": "6e9daf3e-5648-4b63-855b-fb2f21d60c9f",
+      "name": "Get video details",
+      "type": "n8n-nodes-base.youTube",
+      "position": [
+        2272,
+        240
+      ],
+      "typeVersion": 1,
+      "credentials": {
+        "youTubeOAuth2Api": {
+          "id": "QLX4TB8uc4Ulzbz8",
+          "name": "YouTube account"
+        }
+      },
+      "notes": "Make a call to the YouTube API so that we have the thumbnail for the email and the duration to filter out shorts."
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "04a78222-4dab-4cea-ae11-6b9175efea78",
+              "leftValue": "={{ $json.snippet.liveBroadcastContent }}",
+              "rightValue": "=none",
+              "operator": {
+                "type": "string",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2.2,
+      "position": [
+        3232,
+        272
+      ],
+      "id": "2fdd2767-1710-4e44-9156-d4e29409821d",
+      "name": "Filter1"
+    },
+    {
+      "parameters": {
+        "jsCode": "const now = new Date();\nconst cutoff = new Date(now.getTime() - 24 * 60 * 60 * 1000); // 24 hours ago\n\nreturn items.filter(item => {\n  const pubDate = new Date(item.json.pubDate);\n  return pubDate > cutoff;\n});"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        240
+      ],
+      "id": "a4607d33-9448-4b6a-9de5-7f770f7ef4c8",
+      "name": "Code",
+      "alwaysOutputData": false
+    },
+    {
+      "parameters": {
+        "operation": "upsert",
+        "base": {
+          "__rl": true,
+          "value": "appcOzpMOdNhAZDuF",
+          "mode": "list",
+          "cachedResultName": "cash_youtube_track",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblOYn4z1FcXDyXAN",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF/tblOYn4z1FcXDyXAN"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "channel_id": "={{ $json.snippet.channelId }}",
+            "Video_id": "={{ $json.id }}",
+            "channel_name": "={{ $json.snippet.channelTitle }}",
+            "title": "={{ $json.title }}",
+            "link": "={{ $json.snippet.link }}",
+            "publish_date": "={{ $json.formattedDate }}"
+          },
+          "matchingColumns": [
+            "Video_id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": true
+            },
+            {
+              "id": "channel_id",
+              "displayName": "channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Video_id",
+              "displayName": "Video_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "done",
+                  "value": "done"
+                }
+              ],
+              "readOnly": false,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        4352,
+        432
+      ],
+      "id": "4acfcf10-0c11-4e4a-91dd-7a2ae54d9e3f",
+      "name": "Airtable1",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "UVEr8UIQq9LssBfH",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "content": "## Update airtable with videos from the last 24 hours"
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        1280,
+        0
+      ],
+      "typeVersion": 1,
+      "id": "bf93e325-cda7-47d2-ade4-ae94e17871b7",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9da3da43-ef07-4f71-a763-2bc4b070b9d0",
+              "name": "id",
+              "value": "={{ $json.id }}",
+              "type": "string"
+            },
+            {
+              "id": "24ab5b9d-634b-4b98-80cc-d08787b6c8f4",
+              "name": "snippet.channelId",
+              "value": "={{ $json.snippet.channelId }}",
+              "type": "string"
+            },
+            {
+              "id": "bb2cf2f5-6afc-46a2-8c12-96b5cdb3e139",
+              "name": "snippet.link",
+              "value": "={{ $('RSS Read  - Max 15 Latest Videos per Channel').item.json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "e127cee4-c4a5-4a6b-9c52-67f0950a6ffc",
+              "name": "title",
+              "value": "={{ $('RSS Read  - Max 15 Latest Videos per Channel').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "67e25197-7947-4110-a213-9ca3d5789d37",
+              "name": "snippet.publishedAt",
+              "value": "={{ $json.snippet.publishedAt }}",
+              "type": "string"
+            },
+            {
+              "id": "015c4c2b-f2d6-4665-bc33-a5ad80167a7b",
+              "name": "duration",
+              "value": "={{ Duration.fromISO($json.contentDetails.duration).as('seconds') }}",
+              "type": "string"
+            },
+            {
+              "id": "8ff32b55-7ec8-4743-8d29-df9ebd3c83e1",
+              "name": "snippet.liveBroadcastContent",
+              "value": "={{ $json.snippet.liveBroadcastContent }}",
+              "type": "string"
+            },
+            {
+              "id": "f3932511-3823-42d9-aefd-36b430221284",
+              "name": "snippet.channelTitle",
+              "value": "={{ $('Get video details').item.json.snippet.channelTitle }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        2640,
+        240
+      ],
+      "id": "eecaad65-070c-4e3f-92fc-2b1499d8b1ec",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "operation": "formatDate",
+        "date": "={{ $json.snippet.publishedAt }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.dateTime",
+      "typeVersion": 2,
+      "position": [
+        3520,
+        400
+      ],
+      "id": "95f5b1b3-9445-4646-92bb-7e6776d14d93",
+      "name": "Date & Time"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineByPosition",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        3840,
+        272
+      ],
+      "id": "de738bc2-7f16-4967-bfaf-aad31c54ca2f",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "operation": "appendOrUpdate",
+        "documentId": {
+          "__rl": true,
+          "value": "1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w",
+          "mode": "list",
+          "cachedResultName": "Yotutbe-Track",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "id": "={{ $json.id }}",
+            "channelid": "={{ $json.snippet.channelId }}",
+            "title": "={{ $json.title }}",
+            "link": "={{ $json.snippet.link }}",
+            "channel_name": "={{ $json.snippet.channelTitle }}",
+            "publish_date": "={{ $json.formattedDate }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "channelid",
+              "displayName": "channelid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "createdTime",
+              "displayName": "createdTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        4752,
+        64
+      ],
+      "id": "8f7b774d-dd86-41c0-a153-6a668c72bbed",
+      "name": "Append or update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xsVabjvumVKMCbw6",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Create RSS Feed URLs1": {
+      "main": [
+        [
+          {
+            "node": "RSS Read  - Max 15 Latest Videos per Channel",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create List of Channel Ids": {
+      "main": [
+        [
+          {
+            "node": "Create RSS Feed URLs1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YouTube Channel Ids": {
+      "main": [
+        [
+          {
+            "node": "Create List of Channel Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read  - Max 15 Latest Videos per Channel": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "YouTube Channel Ids",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get video details": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "Get video details",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Date & Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Filter1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Date & Time": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Append or update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "40e3e3fd-5aec-4075-a6b4-aa68d4de03d4",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
+  },
+  "id": "5kT1n8ZAk9yGkAMN",
+  "tags": []
+}

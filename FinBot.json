@@ -1,0 +1,1389 @@
+{
+  "name": "FinBot",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -944,
+        48
+      ],
+      "id": "5a514a22-71bd-40bf-9a6c-54b67d553b14",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $json.GeminiModel }}:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [{\n    \"parts\": [\n      { \"text\": \"{{ $json.promt }}\" },\n      { \"file_data\": { \"file_uri\": \"{{ $json.link }}\" } }\n    ]\n  }],\n \"generationConfig\": {\n      \"maxOutputTokens\": {{ $json.max_tokens }}}\n}",
+        "options": {}
+      },
+      "id": "157daee9-561a-4702-8960-72c8895b5da1",
+      "name": "HTTP Request to Google",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        1920,
+        -48
+      ],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "IkYKkC4UsEEEjvzp",
+          "name": "Gemini API Key"
+        },
+        "googlePalmApi": {
+          "id": "AYq7323paoLj50L5",
+          "name": "Google Gemini(PaLM) Api account  - Transcription Summary"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b813302e-5807-459f-954d-70d13e0c5c07",
+              "name": "promt",
+              "value": "=Transcribe the video. Return only the spoken dialogue, verbatim. Omit any additional text or descriptions. Transcribe it until you have reached the maximum token count. Do not split or stop until you have reached the end of the audio token limit.Do not add any greating message before the transcription or any text besides the transcription itself.",
+              "type": "string"
+            },
+            {
+              "id": "b1360487-2091-4237-9098-4441e7350ef2",
+              "name": "GeminiModel",
+              "value": "gemini-2.0-flash",
+              "type": "string"
+            },
+            {
+              "id": "74ce9450-57a8-453a-81b3-4bd0d50d2286",
+              "name": "max_tokens",
+              "value": "65535",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -240,
+        272
+      ],
+      "id": "d932d0fe-c25b-42c4-ae18-50c23b634423",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        672,
+        48
+      ],
+      "id": "8fe5d32a-ead8-4c89-bd43-34abbc6ed9e4",
+      "name": "Merge",
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1170cc6f-44e4-415a-89da-00924d5c5387",
+              "leftValue": "={{ $json.candidatesTokenCount }}",
+              "rightValue": "={{ $json.maxOutputTokens }}",
+              "operator": {
+                "type": "number",
+                "operation": "gt"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2928,
+        -144
+      ],
+      "id": "a1aa7b8a-869b-4cd3-9b83-9cb7f9f8f0da",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "const inputItems = $input.all();\nconst mergeItems = $('Loop Over Items').all();\nconst results = [];\n\nfor (let i = 0; i < inputItems.length; i++) {\n    const item = inputItems[i];\n    const mergeItem = mergeItems[i];\n\n    // Find the AUDIO token count in promptTokensDetails\n    const audioTokenDetail = item.json.usageMetadata.promptTokensDetails.find(\n        detail => detail.modality === \"AUDIO\"\n    );\n    const candidatesTokenCount = audioTokenDetail\n        ? parseInt(audioTokenDetail.tokenCount, 10)\n        : 0; // Default to 0 if not found\n\n    // Get max_tokens from the corresponding merge item\n    const maxOutputTokens = parseInt(mergeItem.json.max_tokens, 10);\n\n    let reason = \"\";\n    if (candidatesTokenCount >= maxOutputTokens) {\n        reason = \"MAX_TOKENS\";\n    } else {\n        reason = \"STOP\";\n    }\n\n    results.push({\n        json: {\n            ...item.json,\n            ...mergeItem.json,\n            candidatesTokenCount,\n            maxOutputTokens,\n            reason\n        }\n    });\n}\n\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        2608,
+        -144
+      ],
+      "id": "8f341470-4eff-4ea7-9e21-2a6e968c8f54",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "jsCode": "// Get the transcript from the 'If' node\nconst transcriptFromIf = $('If').first().json.candidates[0].content.parts[0].text;\n\n// Get the transcript from the 'HTTP Request' node\nconst transcriptFromHttp = $('GeminiTranscript2').first().json.candidates[0].content.parts[0].text;\n\n// Concatenate the two transcripts (add a separator if you want)\nconst fullTranscript = transcriptFromIf + ' ' + transcriptFromHttp;\n\n// Optionally, preserve all previous fields from one of the nodes (e.g., from 'If')\nreturn [\n  {\n    json: {\n      ...$('If').first().json, // or ...$('HTTP Request to Google').first().json\n      FullTranscript: fullTranscript\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4704,
+        -336
+      ],
+      "id": "5496f833-a03a-4cd3-a1dc-b3a5968e2559",
+      "name": "Code1"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://generativelanguage.googleapis.com/v1beta/models/{{ $json.GeminiModel }}:generateContent",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "googlePalmApi",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"contents\": [\n    {\n      \"parts\": [\n        {\n          \"text\": {{ JSON.stringify(\"Continue the transcription exactly from where you have stopped in the following provided response, add only the missing data, exactly from the point where you have stopped. Do not repeat any of the prevoius text.  Don't add any greetings or extra messages, follow the original prompt. Original prompt:\" + $json.promt + \"This is the original truncated response: \" + $json.candidates[0].content.parts[0].text) }}\n\n        },\n        {\n          \"file_data\": {\n            \"file_uri\": \"{{ $json.link }}\"\n          }\n        }\n      ]\n    }\n  ],\n  \"generationConfig\": {\n    \"maxOutputTokens\": {{ $json.max_tokens }}\n  }\n}",
+        "options": {}
+      },
+      "id": "a6509ca5-8063-40e5-b867-80574ba4080b",
+      "name": "GeminiTranscript2",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        3968,
+        -288
+      ],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "credentials": {
+        "httpCustomAuth": {
+          "id": "IkYKkC4UsEEEjvzp",
+          "name": "Gemini API Key"
+        },
+        "googlePalmApi": {
+          "id": "podwUUSWMoXtgwL6",
+          "name": "Google Gemini(PaLM) Api account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Purpose and Goals:\n\nAs an expert financial analyst, generate a comprehensive and structured summary of the financial transcript provided below.  \n\nApply your analytical lens to distill the key financial insights, data points, and recommendations presented.\n\nBehaviors and Rules:\n\nAnalyze the content of the provided YouTube video with the critical eye of a seasoned financial analyst. Generate a summary covering the following points in a structured format:\n\nVideo Identification:  \n\nVideo Title:  \n\nChannel Name:  \n\nPublish Date:\n\nCore Topic(s) & Thesis:  \n\nIdentify the main subject(s) discussed (e.g., stock market analysis, specific stock review, cryptocurrency news, economic trends, investment strategies, financial news commentary, product recommendations).  \n\nWhat is the central thesis or argument the creator is advancing?\n\nKey Discussion Points & Evidence:  \n\nList the primary arguments, insights, or pieces of information presented.  \n\nNote any supporting data, charts, or evidence used.  \n\nWhat are the main takeaways an informed investor should consider?\n\nAssets Mentioned & Analysis Context (If applicable):  \n\nList any specific stocks, cryptocurrencies, ETFs, indices, or other financial assets discussed.  \n\nFor each asset, provide a brief summary of the discussion, including any technical details (e.g., chart patterns, indicators, support/resistance levels), fundamental analysis (e.g., earnings, valuation metrics), news impact, or other relevant factors.  \n\nNote any recommendations or opinions expressed about the asset (e.g., bullish, bearish, buy, sell, hold).\n\nPredictions/Recommendations & Rationale (If applicable):  \n\nSummarize any explicit predictions, forecasts, or investment recommendations made, whether about specific assets or the market in general (e.g., buy, sell, hold, price targets, market trends).  \n\nOutline the rationale provided in the video for these recommendations.  \n\nNote any potential biases, risks, or limitations in the analysis as presented or omitted in the video.\n\nOverall Sentiment & Analytical Tone:  \n\nDescribe the general tone and underlying sentiment (e.g., bullish, bearish, neutral, optimistic, cautious, speculative, data-driven).  \n\nAssess the analytical rigor presented in the video.\n\nConcise Executive Summary:  \n\nProvide a brief paragraph (3-5 sentences) summarizing the video’s core message, key findings, and potential implications for investors, based on the content presented in the video.\n\nSkip any non-relevant discussions, self promotions, commercials, or advertising \n\nOutput Format:\n\nPlease present the summary in a clear, professional, and organized manner using bold headings (e.g., Video Identification) for each section as listed above. Use bullet points or numbered lists where appropriate to enhance readability.\n\n\nImportant:\nReturn only a valid JSON object matching the 'analyzeFinancialVideoContent' function schema provided. Do not include any extra text, explanations, or code blocks.\nThe top-level keys of the JSON object MUST be: \"video_identification\", \"core_topics_and_thesis\", \"key_discussion_points_and_evidence\", \"assets_mentioned_details\", \"predictions_and_recommendations\", \"overall_sentiment_and_tone\", \"executive_summary\".\nFor \"assets_mentioned_details\", each item MUST have \"asset_name_or_ticker\" and \"discussion_summary_and_analysis\".\nFor \"key_discussion_points_and_evidence\", use the keys \"primary_arguments_or_insights\", \"supporting_data_or_evidence_notes\", and \"main_takeaways_for_investors\".\n\n\nVideo Transcript:\n{{ $json.FullTranscript }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        6960,
+        -368
+      ],
+      "id": "69bc2fdf-68da-43fc-8ef7-8704b2b69629",
+      "name": "AI Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {
+          "temperature": 0.2,
+          "topK": 40
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        6992,
+        -80
+      ],
+      "id": "0f29b87f-fcc0-44fc-832b-879f41886cc9",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "AYq7323paoLj50L5",
+          "name": "Google Gemini(PaLM) Api account  - Transcription Summary"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "// Set full transcript\nconst fullTranscript = $input.first().json.candidates[0].content.parts[0].text\n\n// Optionally, preserve all previous fields from one of the nodes (e.g., from 'If')\nreturn [\n  {\n    json: {\n      ...$('If').first().json, // or ...$('HTTP Request to Google').first().json\n      FullTranscript: fullTranscript\n    }\n  }\n];\n"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        4928,
+        -80
+      ],
+      "id": "b5e39247-8a29-49da-84dd-6a2246c425a8",
+      "name": "Code2"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "e365bdbd-cb00-4e8a-86f4-9a8c4ad8f296",
+              "leftValue": "={{ $json.error.status.toString() }}",
+              "rightValue": "429",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            },
+            {
+              "id": "37c51567-8726-4cfa-a508-185cf8c0cca9",
+              "leftValue": "={{ $json.error.status.toString() }}",
+              "rightValue": "503",
+              "operator": {
+                "type": "string",
+                "operation": "equals",
+                "name": "filter.operator.equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4352,
+        -304
+      ],
+      "id": "7cca6536-2277-4b56-8d72-aab2f9e6836d",
+      "name": "If1"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        3232,
+        -288
+      ],
+      "id": "6c1baefc-4f1a-4b42-9639-302dd7766c23",
+      "name": "Wait",
+      "webhookId": "2113a90a-8599-4e7d-b8a3-fb1d2c263635"
+    },
+    {
+      "parameters": {
+        "chatId": "-1002644553287",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "=",
+        "forceReply": {},
+        "replyKeyboardOptions": {},
+        "replyKeyboardRemove": {},
+        "additionalFields": {
+          "appendAttribution": false
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        8704,
+        0
+      ],
+      "id": "4ad65d2a-244a-4dd8-8c42-366c7990ddfc",
+      "name": "Telegram",
+      "webhookId": "5cdbe157-93b8-4264-9af6-39dd81689e74",
+      "credentials": {
+        "telegramApi": {
+          "id": "4xKtVBNrVxeYrwyB",
+          "name": "Telegram account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"tools\": [\n    {\n      \"function_declarations\": [\n        {\n          \"name\": \"analyzeFinancialVideoContent\",\n          \"description\": \"As an expert financial analyst, extract and structure a comprehensive summary of financial video content. Focus on distilling key financial insights, data points, and recommendations.\",\n          \"parameters\": {\n            \"type\": \"object\",\n            \"required\": [\n              \"video_identification\",\n              \"core_topics_and_thesis\",\n              \"key_discussion_points_and_evidence\",\n              \"assets_mentioned_details\",\n              \"predictions_and_recommendations\",\n              \"overall_sentiment_and_tone\",\n              \"executive_summary\"\n            ],\n            \"properties\": {\n              \"video_identification\": {\n                \"type\": \"object\",\n                \"description\": \"Identifiable information about the video.\",\n                \"properties\": {\n                  \"video_title\": { \"type\": [\"string\", \"null\"], \"description\": \"The exact title of the video.\" },\n                  \"channel_name\": { \"type\": [\"string\", \"null\"], \"description\": \"The name of the YouTube channel.\" },\n                  \"publish_date\": { \"type\": [\"string\", \"null\"], \"description\": \"Publication date (YYYY-MM-DD).\" }\n                },\n                \"required\": [\"video_title\", \"channel_name\", \"publish_date\"]\n              },\n              \"core_topics_and_thesis\": {\n                \"type\": \"object\",\n                \"description\": \"The main subjects and central thesis of the video.\",\n                \"properties\": {\n                  \"main_subjects_discussed\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the primary financial subjects or themes discussed (e.g., 'stock market analysis', 'specific stock review').\"\n                  },\n                  \"central_thesis_or_argument\": {\n                    \"type\": \"string\",\n                    \"description\": \"The central argument or main point the video aims to convey.\"\n                  }\n                },\n                \"required\": [\"main_subjects_discussed\", \"central_thesis_or_argument\"]\n              },\n              \"key_discussion_points_and_evidence\": {\n                \"type\": \"object\",\n                \"description\": \"Key arguments, insights, evidence, and takeaways from the video.\",\n                \"properties\": {\n                  \"primary_arguments_or_insights\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the main arguments, insights, or pieces of information presented.\"\n                  },\n                  \"supporting_data_or_evidence_notes\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"Note any supporting data, charts, or evidence used, as a list of strings.\"\n                  },\n                  \"main_takeaways_for_investors\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the main takeaways an informed investor should consider.\"\n                  }\n                },\n                \"required\": [\"primary_arguments_or_insights\", \"supporting_data_or_evidence_notes\", \"main_takeaways_for_investors\"]\n              },\n              \"assets_mentioned_details\": {\n                \"type\": \"array\",\n                \"description\": \"List of financial assets discussed. For each asset, provide a single descriptive string covering its context, analysis, and any recommendations.\",\n                \"items\": {\n                  \"type\": \"object\",\n                  \"properties\": {\n                     \"asset_name_or_ticker\": {\"type\": \"string\", \"description\": \"Name or ticker of the asset (e.g., 'Tesla (TSLA)', 'Bitcoin').\"},\n                     \"discussion_summary_and_analysis\": {\"type\": \"string\", \"description\": \"A comprehensive string summarizing the discussion about this asset, including any technical/fundamental points, news impact, and expressed opinions/recommendations.\"}\n                  },\n                  \"required\": [\"asset_name_or_ticker\", \"discussion_summary_and_analysis\"]\n                }\n              },\n              \"predictions_and_recommendations\": {\n                \"type\": \"object\",\n                \"description\": \"Overall predictions, recommendations, rationale, and biases.\",\n                \"properties\": {\n                  \"specific_predictions_or_forecasts\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List any explicit predictions or forecasts (e.g., 'Tesla to $300', 'Market will be volatile').\"\n                  },\n                  \"investment_actions_suggested\": {\n                     \"type\": \"array\",\n                     \"items\": {\"type\": \"string\"},\n                     \"description\": \"List any suggested investment actions (e.g., 'Buy Palantir', 'Take profit on Hims', 'Hold Google'). For each, include the asset if specified.\"\n                  },\n                  \"overall_rationale_for_outlook\": {\n                    \"type\": \"string\",\n                    \"description\": \"Summarize the main rationale provided for the predictions/recommendations.\"\n                  },\n                  \"identified_biases_risks_limitations\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List any potential biases, risks, or limitations noted in the analysis.\"\n                  }\n                },\n                \"required\": [\"specific_predictions_or_forecasts\", \"investment_actions_suggested\", \"overall_rationale_for_outlook\", \"identified_biases_risks_limitations\"]\n              },\n              \"overall_sentiment_and_tone\": {\n                \"type\": \"object\",\n                \"description\": \"The overall sentiment and analytical tone of the video.\",\n                \"properties\": {\n                    \"sentiment_expressed\": { \"type\": \"string\", \"description\": \"Overall sentiment (e.g., 'Bullish', 'Cautiously Optimistic', 'Neutral').\"},\n                    \"analytical_tone_observed\": { \"type\": \"string\", \"description\": \"Prevailing analytical tone (e.g., 'Data-driven (technical)', 'Speculative', 'Commentary').\"},\n                    \"analytical_rigor_notes\": { \"type\": \"string\", \"description\": \"Brief notes on the analytical rigor observed.\"}\n                },\n                \"required\": [\"sentiment_expressed\", \"analytical_tone_observed\", \"analytical_rigor_notes\"]\n              },\n              \"executive_summary\": {\n                \"type\": \"string\",\n                \"description\": \"A concise (3-5 sentences) summary of the video's core message, key findings, and potential implications for investors.\"\n              }\n            }\n          }\n        }\n      ]\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        7152,
+        -80
+      ],
+      "id": "28ceefa1-333e-4d11-a6f9-5c8679e55711",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        6144,
+        -128
+      ],
+      "id": "476e8734-eafc-4b24-af74-1e3d5a25ab6a",
+      "name": "Merge1"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "FullTranscript",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        6480,
+        -144
+      ],
+      "id": "fba64fa3-7fa6-44e1-87f4-6cb661c9ab61",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        32
+      ],
+      "id": "54955371-cb8a-48f4-baf3-6887c2b9a438",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        1328,
+        32
+      ],
+      "id": "25236c46-4d97-49f7-9047-3f808118abb2",
+      "name": "Loop Over Items",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "### Rate Limit Request for continuaton prompt",
+        "height": 80,
+        "width": 200,
+        "color": 6
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2224,
+        -336
+      ],
+      "id": "7318bb5e-1b5a-47db-889d-224bc4590d6b",
+      "name": "Sticky Note"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Configuration ---\nconst TELEGRAM_MAX_LENGTH = 4000;\n// --- End Configuration ---\n\nconst inputItems = $input.all();\nconst splitItems = $(\"Split Out\").all();\nconst allTelegramMessages = [];\n\nfor (let i = 0; i < inputItems.length; i++) {\n    const item = inputItems[i];\n    const splitoutItem = splitItems[i];\n    const mergedJson = { ...item.json, ...(splitoutItem ? splitoutItem.json : {}) };\n    const currentVideoId = mergedJson.Video_id;\n    const data = mergedJson.output || {}; // Gemini's output\n\n    // Helper function to safely get an array\n    const getSafeArray = (arr) => Array.isArray(arr) ? arr : [];\n\n    // --- Render Sections based on the SIMPLIFIED SCHEMA ---\n\n    // Video Identification\n    const vidIdentData = data.video_identification || {};\n    const videoTitle = (mergedJson.title && mergedJson.title !== \"Not available in transcript\" && mergedJson.title !== \"Not provided in transcript\") ? mergedJson.title : vidIdentData.video_title;\n    const channelName = (mergedJson.channel_name && mergedJson.channel_name !== \"Not available in transcript\" && mergedJson.channel_name !== \"Not provided in transcript\") ? mergedJson.channel_name : vidIdentData.channel_name;\n    const publishDate = (mergedJson.publish_date && mergedJson.publish_date !== \"Not available in transcript\" && mergedJson.publish_date !== \"Not provided in transcript\") ? mergedJson.publish_date : vidIdentData.publish_date;\n\n    const videoIdentification = `🎥 *Video Identification:*\n• *Video Title:* ${videoTitle || 'N/A'}\n• *Channel Name:* ${channelName || 'N/A'}\n• *Publish Date:* ${publishDate || 'N/A'}`;\n\n    // Core Topics & Thesis\n    const coreData = data.core_topics_and_thesis || {};\n    const mainSubjects = getSafeArray(coreData.main_subjects_discussed);\n    const centralThesis = coreData.central_thesis_or_argument || 'N/A';\n\n    const coreTopicsThesis = `💡 *Core Topic(s) & Thesis:*\n• *Core Topic(s):*\n${mainSubjects.length > 0 ? mainSubjects.map(s => `  • ${s}`).join('\\n') : '  • N/A'}\n• *Thesis:* ${centralThesis}`;\n\n    // Key Discussion Points & Evidence\n    const kdpData = data.key_discussion_points_and_evidence || {};\n    const primaryArgs = getSafeArray(kdpData.primary_arguments_or_insights);\n    const supportingNotes = getSafeArray(kdpData.supporting_data_or_evidence_notes);\n    const mainTakeaways = getSafeArray(kdpData.main_takeaways_for_investors);\n\n    const keyDiscussionPoints = `💬 *Key Discussion Points & Evidence:*\n• *Primary Arguments/Insights:*\n${primaryArgs.length > 0 ? primaryArgs.map(p => `  • ${p}`).join('\\n') : '  • N/A'}\n• *Supporting Data/Evidence Notes:*\n${supportingNotes.length > 0 ? supportingNotes.map(s => `  • ${s}`).join('\\n') : '  • N/A'}\n• *Main Takeaways for Investors:*\n${mainTakeaways.length > 0 ? mainTakeaways.map(t => `  • ${t}`).join('\\n') : '  • N/A'}`;\n\n    // Assets Mentioned Details\n    // CORRECTED: Ensure assetsArray is always an array before calling .map\n    const assetsDetailsData = data.assets_mentioned_details;\n    const assetsArray = Array.isArray(assetsDetailsData) ? assetsDetailsData : [];\n\n    const assetsMentioned = `💰 *Assets Mentioned & Analysis Context (If applicable):*\n${assetsArray.length > 0 ? assetsArray.map(asset => {\n        return `• *Asset:* ${asset.asset_name_or_ticker || 'N/A'}\\n  • *Discussion Summary:* ${asset.discussion_summary_and_analysis || 'N/A'}`;\n    }).join('\\n\\n') : '• *No specific assets mentioned or analyzed.*'}`;\n\n    // Predictions and Recommendations\n    const predData = data.predictions_and_recommendations || {};\n    const predictions = getSafeArray(predData.explicit_predictions_or_forecasts);\n    const actionsSuggested = getSafeArray(predData.investment_recommendations);\n    const rationaleForRecs = getSafeArray(predData.rationale_for_recommendations);\n    const biasesRisks = getSafeArray(predData.potential_biases_risks_limitations);\n\n    const predictionsRecommendations = `🔮 *Predictions/Recommendations & Rationale (If applicable):*\n• *Specific Predictions/Forecasts:*\n${predictions.length > 0 ? predictions.map(p => `  • ${p}`).join('\\n') : '  • N/A'}\n• *Investment Actions Suggested:*\n${actionsSuggested.length > 0 ? actionsSuggested.map(a => `  • ${a}`).join('\\n') : '  • N/A'}\n• *Rationale for Recommendations:*\n${rationaleForRecs.length > 0 ? rationaleForRecs.map(r => `  • ${r}`).join('\\n') : '  • N/A'}\n• *Identified Biases, Risks, or Limitations:*\n${biasesRisks.length > 0 ? biasesRisks.map(b => `  • ${b}`).join('\\n') : '  • N/A'}`;\n\n    // Overall Sentiment and Tone\n    const sentimentData = data.overall_sentiment_and_tone || {};\n    const sentimentText = sentimentData.general_tone_and_sentiment || 'N/A';\n    const analyticalTone = sentimentData.analytical_tone_observed || 'N/A'; // This key is not in your example LLM output, so it will be N/A\n    const rigorNotesText = sentimentData.analytical_rigor_assessment || 'N/A';\n\n    let sentimentEmoji = '⚪️ ';\n    const lowerSentimentText = sentimentText.toLowerCase();\n    const positiveKeywords = ['bullish', 'positive', 'optimistic', 'contrarian bullish', 'cautiously optimistic'];\n    const negativeKeywords = ['bearish', 'negative', 'cautious'];\n    const neutralKeywords = ['neutral', 'mixed'];\n\n    if (positiveKeywords.some(k => lowerSentimentText.includes(k))) {\n        sentimentEmoji = '🟢 ';\n    } else if (negativeKeywords.some(k => lowerSentimentText.includes(k))) {\n        sentimentEmoji = '🔴 ';\n    } else if (neutralKeywords.some(k => lowerSentimentText.includes(k))) {\n        sentimentEmoji = '🟡 ';\n    }\n\n    const overallSentimentTone = `📊 *Overall Sentiment & Analytical Tone:*\n• *Sentiment:* ${sentimentEmoji} ${sentimentText}\n• *Analytical Tone:* ${analyticalTone}\n• *Analytical Rigor Notes:* ${rigorNotesText}`;\n\n    // Executive Summary\n    const executiveSummary = `📝 *Executive Summary:*\n${data.executive_summary || 'N/A'}`;\n\n\n    // --- Splitting Logic (remains the same) ---\n    const sections = [\n        videoIdentification,\n        coreTopicsThesis,\n        keyDiscussionPoints,\n        assetsMentioned,\n        predictionsRecommendations,\n        overallSentimentTone,\n        executiveSummary\n    ];\n    let currentMessagePart = '';\n    let messageCounter = 1;\n    for (const section of sections) {\n        const separator = currentMessagePart === '' ? '' : '\\n\\n---\\n\\n';\n        if (currentMessagePart.length + separator.length + section.length > TELEGRAM_MAX_LENGTH) {\n            if (section.length > TELEGRAM_MAX_LENGTH) {\n                let tempSection = section;\n                while (tempSection.length > TELEGRAM_MAX_LENGTH) {\n                    allTelegramMessages.push({ json: { text: `*(Part ${messageCounter++})*\\n\\n` + tempSection.substring(0, TELEGRAM_MAX_LENGTH), video_id: currentVideoId } });\n                    tempSection = tempSection.substring(TELEGRAM_MAX_LENGTH);\n                }\n                if (tempSection.length > 0) { allTelegramMessages.push({ json: { text: `*(Part ${messageCounter++})*\\n\\n` + tempSection, video_id: currentVideoId } }); }\n                currentMessagePart = ''; continue;\n            }\n            allTelegramMessages.push({ json: { text: `*(Part ${messageCounter++})*\\n\\n` + currentMessagePart, video_id: currentVideoId } });\n            currentMessagePart = section;\n        } else {\n            currentMessagePart += separator + section;\n        }\n    }\n    if (currentMessagePart.length > 0) {\n        allTelegramMessages.push({ json: { text: `*(Part ${messageCounter++})*\\n\\n` + currentMessagePart, video_id: currentVideoId } });\n    }\n}\nreturn allTelegramMessages;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        7888,
+        -144
+      ],
+      "id": "36ce4135-9774-4e66-8c23-029cd252c65c",
+      "name": "Concat All Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fc754d2e-b45d-4abd-aa67-3c50a6b96ee5",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        9024,
+        0
+      ],
+      "id": "2bbe4a1a-19f0-4415-ad0a-fcdc09d92575",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "base": {
+          "__rl": true,
+          "value": "appcOzpMOdNhAZDuF",
+          "mode": "list",
+          "cachedResultName": "cash_youtube_track",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblOYn4z1FcXDyXAN",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF/tblOYn4z1FcXDyXAN"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "Video_id": "={{ $('Split Out').item.json.Video_id }}",
+            "processed": "=[\"done\"]"
+          },
+          "matchingColumns": [
+            "Video_id"
+          ],
+          "schema": [
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": true,
+              "removed": false
+            },
+            {
+              "id": "channel_id",
+              "displayName": "channel_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "Video_id",
+              "displayName": "Video_id",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "dateTime",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "string",
+              "readOnly": false,
+              "removed": false
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "canBeUsedToMatch": true,
+              "display": true,
+              "type": "array",
+              "options": [
+                {
+                  "name": "done",
+                  "value": "done"
+                }
+              ],
+              "readOnly": false,
+              "removed": false
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        9792,
+        -320
+      ],
+      "id": "7e0c3105-692e-4414-b51a-6e228fa7dfd5",
+      "name": "Airtable1",
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "UVEr8UIQq9LssBfH",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "={{ $json.result.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        9472,
+        -144
+      ],
+      "id": "bd083d70-4a23-4b88-9811-ef1544d08e3f",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 120
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -944,
+        -160
+      ],
+      "id": "08f8c1aa-b849-42b4-a155-d07bd276b046",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "amount": 2,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1568,
+        32
+      ],
+      "id": "0582885e-df27-431f-a0a6-3ba78fd64bae",
+      "name": "Wait1",
+      "webhookId": "a72d314f-bf2d-4491-b575-306ed3110bdd"
+    },
+    {
+      "parameters": {
+        "content": "### Rate Limit Requests in order to avoid quota issues",
+        "height": 80,
+        "width": 200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1264,
+        -48
+      ],
+      "id": "028ccd23-2214-4138-bf92-2bb774845c96",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "5f714955-f962-4827-8164-7f28d78c85af",
+              "leftValue": "={{ $json.error.cause.status }}",
+              "rightValue": 500,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "546e1567-690a-42ea-8704-ee61229217d0",
+              "leftValue": "={{ $json.error.cause.status }}",
+              "rightValue": 429,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            },
+            {
+              "id": "acd02a3c-ab76-4d99-9be9-433d9b5f9469",
+              "leftValue": "={{ $json.error.cause.status }}",
+              "rightValue": 503,
+              "operator": {
+                "type": "number",
+                "operation": "equals"
+              }
+            }
+          ],
+          "combinator": "or"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2288,
+        -240
+      ],
+      "id": "32ded19d-0dee-4e67-ad98-60550005ff9d",
+      "name": "API Error",
+      "notesInFlow": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "content": "### Exit in case the model is overloaded",
+        "height": 80,
+        "width": 320
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        4032,
+        -336
+      ],
+      "id": "816286d4-c8f2-42cb-a2fd-995c50f087f2",
+      "name": "Sticky Note2"
+    },
+    {
+      "parameters": {
+        "operation": "search",
+        "base": {
+          "__rl": true,
+          "value": "appcOzpMOdNhAZDuF",
+          "mode": "list",
+          "cachedResultName": "cash_youtube_track",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF"
+        },
+        "table": {
+          "__rl": true,
+          "value": "tblOYn4z1FcXDyXAN",
+          "mode": "list",
+          "cachedResultName": "Table 1",
+          "cachedResultUrl": "https://airtable.com/appcOzpMOdNhAZDuF/tblOYn4z1FcXDyXAN"
+        },
+        "filterByFormula": "AND({channel_id} != \"\", {processed} != \"done\", IS_AFTER(createdTime, DATEADD(NOW(), -24, 'hours')))",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.airtable",
+      "typeVersion": 2.1,
+      "position": [
+        224,
+        -448
+      ],
+      "id": "4014d9fa-3d89-4d6e-bd2f-234c9e03f397",
+      "name": "Search records",
+      "credentials": {
+        "airtableTokenApi": {
+          "id": "UVEr8UIQq9LssBfH",
+          "name": "Airtable Personal Access Token account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w",
+          "mode": "list",
+          "cachedResultName": "Yotutbe-Track",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -240,
+        -160
+      ],
+      "id": "4ce874f9-1d29-4e76-879b-bb44c206e608",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xsVabjvumVKMCbw6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3f3f7ef5-064b-44f4-9473-313ab3d5a673",
+              "leftValue": "=\n {{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2bca92fa-a04f-408f-b1b4-c3370ee28a85",
+              "leftValue": "={{ $json.processed }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        160,
+        -128
+      ],
+      "id": "b53039d0-e8ba-42d7-b6e5-9adcd3735c7a",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w",
+          "mode": "list",
+          "cachedResultName": "Yotutbe-Track",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed": "done",
+            "id": "={{ $('Split Out').item.json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "channelid",
+              "displayName": "channelid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "createdTime",
+              "displayName": "createdTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        10128,
+        80
+      ],
+      "id": "baeafe78-509f-47f9-b239-4c63e683a604",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xsVabjvumVKMCbw6",
+          "name": "Google Sheets account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2025-07-15T09:00:49.582+03:00",
+          "Readable date": "July 15th 2025, 9:00:49 am",
+          "Readable time": "9:00:49 am",
+          "Day of week": "Tuesday",
+          "Year": "2025",
+          "Month": "July",
+          "Day of month": "15",
+          "Hour": "09",
+          "Minute": "00",
+          "Second": "49",
+          "Timezone": "Asia/Jerusalem (UTC+03:00)"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTTP Request to Google": {
+      "main": [
+        [
+          {
+            "node": "API Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "GeminiTranscript2": {
+      "main": [
+        [
+          {
+            "node": "If1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code1": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Code2": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "If1": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Code1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "GeminiTranscript2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Concat All Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Telegram": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Wait1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concat All Items": {
+      "main": [
+        [
+          {
+            "node": "Telegram",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Airtable1": {
+      "main": [
+        []
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait1": {
+      "main": [
+        [
+          {
+            "node": "HTTP Request to Google",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "API Error": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Search records": {
+      "main": [
+        []
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a066c4cb-f287-4d7c-a42f-1c9ca6283496",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
+  },
+  "id": "V3IAeZ97TnY9oK1E",
+  "tags": []
+}
