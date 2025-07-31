@@ -1,0 +1,874 @@
+{
+  "name": "DannyTrades-V3",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1600,
+        144
+      ],
+      "id": "1d44589e-7f47-4114-a202-e2500220f563",
+      "name": "When clicking ‘Execute workflow’"
+    },
+    {
+      "parameters": {
+        "text": "=You are a data extraction and orgnization agent. You will be given the raw content of an email that contains stock-related data. Your task is to parse the text, extract relevant information for each stock mentioned, and structure it into valid JSON based on the schema provided below.\n\n\nImportant Rules:\n - Pay close attention what red and yellow candles are mantioned\n - Provide concise summary with the most important points in the misc section of each stock.\n - Dont provide any data that does not exsist.\n - Determine the bulishnesh level of each stock from the provided context. There can only be one value, Hot or Extreme Bulish. Never provide both values. Pay attention to the following signs to determine the bulishness level:\n  - Extreme Bulish (multiple signs) such as: Red Candle in Force,  successfully broke through the critical resistance, closed above the upper boundary of the volatility hole, red candles on all time frames, Emerging Red Ribbons, MACD Golden Cross\n  - Hot (single sign) - Hot stock, Red Candle\n- When updating hot / Extreme bulish indicators - pay attention if the stock is expiriencing a downtrend or have multiple yellow candles on multiple time frames. Such stocks should not be tagged at all.\n - Provide only the most imporant support and resistance levels. Each stock should not have more than 3 support and ressitance levels.\nEach stock should be represented by a JSON object using its symbol (e.g., AMD, NVDA) as the symbol field.\n\nOnly include fields if data is explicitly present. Do not invent or hallucinate values.\n\nOutput a single JSON object structured as follows:\n{\n  \"stocks\": [\n    {\n      \"symbol\": \"string\",\n      \"ticker_name\": \"string\",\n      \"volatility_hole\": \"string\",\n      \"red_candle\": {\n        \"daily\": \"boolean\",\n        \"weekly\": \"boolean\",\n        \"monthly\": \"boolean\"\n      },\n      \"yellow_candle\": {\n        \"daily\": \"boolean\",\n        \"weekly\": \"boolean\",\n        \"monthly\": \"boolean\"\n      },\n      \"whale_accumulation\": {\n        \"daily\": \"string\",\n        \"weekly\": \"string\",\n        \"monthly\": \"string\"\n      },\n      \"technical_indicators\": {\n        \"support_levels\": [\n          \"number\"\n        ],\n        \"resistance_levels\": [\n          \"number\"\n        ]\n      },\n  {\n    \"Bulish Level\": [\"Extreme Bulish\", \"Hot\"]\n    },\n    {\n      \"misc_data\": \"string\",\n      \"patreon_link\": \"string\"\n    }\n  ]\n}\n\nExample 1 Expected Output:\n{\n  \"stocks\": [\n    {\n      \"symbol\": \"DUOL\",\n      \"volatility_hole\": \"closed below the lower boundary of the last volatility hole at $489\",\n      \"yellow_candle\": {\n        \"daily\": true\n      },\n      \"whale_accumulation\": {\n        \"daily\": \"decreased to 65.6%\"\n      },\n      \"technical_indicators\": {\n        \"support_levels\": [435, 450, 465, 472],\n        \"resistance_levels\": [480, 488, 493, 500]\n      },\n      \"misc_data\": \"On the daily chart, DUOL has closed below the lower boundary of the last volatility hole at $489 and so more downside would be expected. The last yellow candle remains in force. For the uptrend to resume, a daily close above $540.3 is needed while closing below $510.88 would trigger a deeper pullback, which DUOL is experiencing currently. The pullback continues. Closing Price: $474.9 Technical Indicators: MACD and RSI are slightly curling down.\"\n    },\n      \"patreon_link\": \"https://www.patreon.com/post/id54627\",\n    {\n      \"symbol\": \"SPOT\",\n      \"red_candle\": {\n        \"daily\": true,\n        \"weekly\": true,\n        \"monthly\": true\n      },\n      \"whale_accumulation\": {\n        \"daily\": \"increased to 84.9%\"\n      },\n      \"technical_indicators\": {\n        \"support_levels\": [672, 680, 700],\n        \"resistance_levels\": [718, 723, 750]\n      },\n     \"Bulish Level\": [\"Extreme Bulish\"],\n\n      \"misc_data\": \"SPOT is among the most bullish stocks, displaying bullish red candles across all timeframes, supported by strong technical indicators and robust whale accumulation. The $680.00 level would act as a temporary support level, while $718.00 would serve as a resistance level. It is expected that SPOT remains range-bound between these two price levels before a potential breakout if whale accumulation remains steady and strong. Closing Price: $715.57 Technical Indicators: MACD and RSI are flattening with slight upward curls.\",\n\"patreon_link\": \"https://www.patreon.com/post/id123\",\n    }\n  ]\n}\n\nExample 2 Expected Output:\n{\n  \"stocks\": [\n    {\n      \"symbol\": \"TMDX\",\n      \"red_candle\": {\n        \"daily\": true,\n        \"weekly\": true\n      },\n      \"whale_accumulation\": {\n        \"daily\": \"decreased to 92.19%\"\n      },\n      \"technical_indicators\": {\n        \"support_levels\": [128, 135, 138],\n        \"resistance_levels\": [142, 145, 150]\n      },\n      \"misc_data\": \"The red candles from both daily and weekly charts remain in force, unless there is a daily close below $128.3 and a weekly close below $111.8. The uptrend is accelerating, with $145 as the next critical resistance level. Closing Price: $141.96 Technical Indicators: MACD and RSI are flattening with slight downward curls.\",\n    \"patreon_link\": \"https://www.patreon.com/post/id123456\",\n    {\n      \"symbol\": \"GRAB\",\n      \"volatility_hole\": \"closed below the lower boundary of the volatility hole at $4.80\",\n      \"yellow_candle\": {\n        \"daily\": true\n      },\n      \"whale_accumulation\": {\n        \"daily\": \"increased to 15.69%\"\n      },\n    {\n      \"technical_indicators\": {\n        \"support_levels\": [4.2, 4.5],\n        \"resistance_levels\": [4.85, 4.95, 5.2]\n    }\n      \"misc_data\": \"On the daily chart, GRAB closed below the lower boundary of the volatility hole at $4.80, triggering the recent drop to $4.53 Meanwhile, the last yellow candle from June 10 remains valid. For the uptrend to resume, GRAB must close above $4.97 on a daily basis. Conversely, a daily close below $4.65 could trigger a deeper pullback. The downtrend persists. Closing Price: $4.71 Technical Indicators: MACD is flattening while RSI is curling up.\",\n        \"patreon_link\": \"https://www.patreon.com/post/id123456\"\n    }\n  ]\n}\n\n\nEmail data:\n{{ $json.emailBlob }}",
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"$schema\": \"https://json-schema.org/draft/2020-12/schema\",\n  \"title\": \"StockEmailExtraction\",\n  \"type\": \"object\",\n  \"properties\": {\n    \"stocks\": {\n      \"type\": \"array\",\n      \"items\": {\n        \"type\": \"object\",\n        \"properties\": {\n          \"symbol\": { \"type\": \"string\" },\n          \"ticker_name\": { \"type\": \"string\" },\n          \"volatility_hole\": { \"type\": \"string\" },\n          \"red_candle\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"daily\": { \"type\": \"boolean\" },\n              \"weekly\": { \"type\": \"boolean\" },\n              \"monthly\": { \"type\": \"boolean\" }\n            },\n            \"additionalProperties\": false\n          },\n          \"yellow_candle\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"daily\": { \"type\": \"boolean\" },\n              \"weekly\": { \"type\": \"boolean\" },\n              \"monthly\": { \"type\": \"boolean\" }\n            },\n            \"additionalProperties\": false\n          },\n          \"whale_accumulation\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"daily\": { \"type\": \"string\" },\n              \"weekly\": { \"type\": \"string\" },\n              \"monthly\": { \"type\": \"string\" }\n            },\n            \"additionalProperties\": false\n          },\n          \"technical_indicators\": {\n            \"type\": \"object\",\n            \"properties\": {\n              \"support_levels\": {\n                \"type\": \"array\",\n                \"items\": { \"type\": \"number\" }\n              },\n              \"resistance_levels\": {\n                \"type\": \"array\",\n                \"items\": { \"type\": \"number\" }\n              }\n            },\n            \"required\": [],\n            \"additionalProperties\": false\n          },\n          \"misc_data\": { \"type\": \"string\" },\n          \"patreon_link\": { \"type\": \"string\", \"format\": \"uri\" },\n          \"bullishness_signal\": {\n            \"type\": \"array\",\n            \"items\": {\n              \"type\": \"string\",\n              \"enum\": [\"Extreme Bullish\", \"Hot\"]\n            }\n          }\n        },\n        \"required\": [\"symbol\"],\n        \"additionalProperties\": false\n      },\n      \"additionalProperties\": false\n    }\n  },\n  \"required\": [\"stocks\"],\n  \"additionalProperties\": false\n}",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.informationExtractor",
+      "typeVersion": 1.1,
+      "position": [
+        912,
+        320
+      ],
+      "id": "14af005c-5276-40e0-8338-7da9a5d2e97a",
+      "name": "Information Extractor"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {
+          "temperature": 0.4
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        784,
+        864
+      ],
+      "id": "cf95515b-85ad-40b7-b508-6869230028a4",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "podwUUSWMoXtgwL6",
+          "name": "Google Gemini(PaLM) Api account - With Billing!"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 30
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        2528,
+        144
+      ],
+      "id": "a1aa99e7-260c-4fd0-96ab-144bd5f1e6c1",
+      "name": "WaitforAgent",
+      "webhookId": "930fb5c5-d896-49f4-92e6-fac575feed63"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-pro",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        2240,
+        848
+      ],
+      "id": "2c32b607-e497-40de-b04a-f6c657d4c6fe",
+      "name": "Google Gemini Chat Model1",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "podwUUSWMoXtgwL6",
+          "name": "Google Gemini(PaLM) Api account - With Billing!"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "jsCode": "const allEmailText = [];\n\nfor (const item of $input.all()) {\n  // Assuming the plain text body is available in item.json.text\n  // You might need to adjust 'item.json.text' if your Gmail node output differs\n  if (item.json.text) {\n    allEmailText.push(item.json.text);\n  }\n}\n\n// Join all extracted text into a single string, separated by newlines\nconst emailBlob = allEmailText.join('\\n\\n---\\n\\n'); // Add a separator for clarity\n\nreturn [\n  {\n    json: {\n      emailBlob: emailBlob\n    }\n  }\n];"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        -128,
+        288
+      ],
+      "id": "32d5c8f2-24f9-4495-bd2b-217b99d0fb1f",
+      "name": "AppendAllEmails"
+    },
+    {
+      "parameters": {},
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        3424,
+        1312
+      ],
+      "id": "8d72f38a-aecd-4f4c-860f-0f622ec5ed66",
+      "name": "ListTools",
+      "credentials": {
+        "mcpClientApi": {
+          "id": "U98YzjtKKH2RcRpA",
+          "name": "MCP Client (STDIO) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "executeTool",
+        "toolName": "={{ $fromAI(\"tool\", \"the selected tool to use\") }}",
+        "toolParameters": "={{ $fromAI('Tool_Parameters', ``, 'json') }}"
+      },
+      "type": "n8n-nodes-mcp.mcpClientTool",
+      "typeVersion": 1,
+      "position": [
+        4032,
+        1312
+      ],
+      "id": "fab8eac6-d1af-48f2-8331-fb5393e35563",
+      "name": "NotionMCP",
+      "credentials": {
+        "mcpClientApi": {
+          "id": "U98YzjtKKH2RcRpA",
+          "name": "MCP Client (STDIO) account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "getAll",
+        "returnAll": true,
+        "additionalFields": {
+          "labelIds": [
+            "Label_5958665196974924851"
+          ]
+        }
+      },
+      "id": "d67c7b55-f58d-4819-adf1-16c5b297c877",
+      "name": "Gmail - Get Many",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -1248,
+        912
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "P8u6tRpw4g0u0dai",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {},
+      "id": "bf0d8c95-dd3f-4625-866e-08cd431ca90f",
+      "name": "Function",
+      "type": "n8n-nodes-base.function",
+      "typeVersion": 1,
+      "position": [
+        -784,
+        944
+      ]
+    },
+    {
+      "parameters": {
+        "resource": "message",
+        "operation": "delete",
+        "messageId": "={{$json.id}}"
+      },
+      "id": "38f8adb0-67cc-4d60-a37c-c1e41df7d32a",
+      "name": "Gmail - Delete",
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 1,
+      "position": [
+        -464,
+        928
+      ],
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "P8u6tRpw4g0u0dai",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "cronExpression",
+              "expression": "30 9 * * *"
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1680,
+        448
+      ],
+      "id": "29c4e5fb-b2f0-4d0f-833b-90587318a14f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {}
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1744,
+        912
+      ],
+      "id": "392a6ee9-e15b-4c4a-a7f7-f6e165e19b55",
+      "name": "Schedule Trigger1"
+    },
+    {
+      "parameters": {
+        "content": "## Workflow Triggers & Initial Email Fetch 📧\n\nThis section handles the initiation of the workflow. It can be triggered manually or on a schedule.\n\n-   **Manual Trigger**: Allows you to start the workflow manually for testing or immediate execution.\n-   **Schedule Trigger**: Automatically runs the workflow at predefined times (e.g., daily at 9:30 AM and 11:30 PM).\n-   **Gmail Nodes**: Fetch emails from your Gmail account that have a specific label ('Label_5958665196974924851'). One path fetches a single email, and another can fetch multiple.",
+        "height": 320,
+        "width": 620,
+        "color": 5
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -1584,
+        -240
+      ],
+      "name": "Workflow Triggers & Email Fetch",
+      "id": "f9b67596-aae0-4288-93bb-eacdceb73445"
+    },
+    {
+      "parameters": {
+        "content": "## Email Content Aggregation 📦\n\nThis 'AppendAllEmails' Function node collects the plain text body from all incoming Gmail items and consolidates them into a single 'emailBlob' variable. This unified text is then passed on for further processing.",
+        "width": 400,
+        "color": 4
+      },
+      "name": "Email Content Aggregation",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        -128,
+        0
+      ],
+      "id": "5875b827-ebb8-4ad9-bfd4-bb96efd7ad56"
+    },
+    {
+      "parameters": {
+        "content": "## AI-Powered Information Extraction 🧠\n\nThe 'Information Extractor' node, powered by the 'Google Gemini Chat Model', is responsible for parsing the consolidated email content. It extracts structured stock-related data (e.g., stock symbols, candle types, volatility, whale accumulation, support/resistance levels, bullishness signals, and miscellaneous data) based on a detailed JSON schema. This ensures that only relevant and formatted data is passed to the next stage.",
+        "height": 220,
+        "width": 500,
+        "color": 6
+      },
+      "name": "AI-Powered Information Extraction",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        912,
+        64
+      ],
+      "id": "c44cd238-9dd6-47cd-b685-37a1188f0084"
+    },
+    {
+      "parameters": {
+        "content": "## Notion Database Management & AI Agent 📊\n\nThis section orchestrates the update and creation of stock entries in your Notion database.\n\n-   **WaitforAgent**: Introduces a pause, allowing for potential manual intervention or ensuring prior steps are complete.\n-   **AI Agent**: This intelligent agent, leveraging another 'Google Gemini Chat Model' and specialized Notion tools ('ListTools', 'NotionMCP'), queries your Notion database to check for existing stock entries. If a stock exists, it updates the relevant properties (e.g., Red/Yellow Candle, Volatility Hole, Whale Accumulation, Hot Stocks, Important Details, Support/Resistance, and Link). If a stock is new, it creates a new page with the extracted information.",
+        "height": 280,
+        "width": 700
+      },
+      "name": "Notion Database Management & AI Agent",
+      "type": "n8n-nodes-base.stickyNote",
+      "position": [
+        3072,
+        -192
+      ],
+      "id": "04506674-b071-4b6a-af1b-a66148537e9c"
+    },
+    {
+      "parameters": {
+        "content": "## Processed Email Deletion 🗑️\n\nThis branch of the workflow is dedicated to managing the emails after they have been processed. It fetches emails (similar to the initial trigger) and then uses a 'Function' node (currently configured with placeholder code) before passing the email IDs to the 'Gmail - Delete' node. This ensures that processed emails are removed from your inbox, keeping it tidy.",
+        "height": 200,
+        "width": 500,
+        "color": 3
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "name": "Processed Email Deletion",
+      "position": [
+        -1248,
+        656
+      ],
+      "id": "03af8bc1-1717-4c0e-8ad7-3baaaa9f3975"
+    },
+    {
+      "parameters": {
+        "operation": "getAll",
+        "limit": 100,
+        "simple": false,
+        "filters": {
+          "labelIds": [
+            "Label_5958665196974924851"
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.gmail",
+      "typeVersion": 2.1,
+      "position": [
+        -784,
+        304
+      ],
+      "id": "e52dcd26-d69b-4d76-8b93-8c6e736c3163",
+      "name": "Get many messages",
+      "webhookId": "3457f88b-0b71-4741-b1c5-a55a6407809b",
+      "credentials": {
+        "gmailOAuth2": {
+          "id": "P8u6tRpw4g0u0dai",
+          "name": "Gmail account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        2144,
+        368
+      ],
+      "id": "6602e5db-4e9f-41da-b848-61157d0f3001",
+      "name": "Loop Over Items"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "output.stocks",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1680,
+        368
+      ],
+      "id": "b4e42722-0f7c-49c8-b26b-145834b34903",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "model": "deepseek/deepseek-chat-v3-0324:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        2816,
+        592
+      ],
+      "id": "559cfb5e-483b-42b6-9255-ec25c8bca778",
+      "name": "OpenRouter Chat Model",
+      "credentials": {
+        "openRouterApi": {
+          "id": "k3rtnPnzcf00Vwg0",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an **Expert Notion Stock Database Agent**.\n\nYour role is to maintain the Notion stock database (`ID: 20ef056c191c80068fd5f728fee3bda0`) with **high precision**, **contextual completeness**, and **data integrity**.\n\nYou will receive a structured JSON `stock` object. Your task is to **either update an existing stock entry or create a new one**, using advanced logic that:\n\n* Preserves valuable context\n* Merges partial updates intelligently\n* Replaces outdated or less relevant data when the new data is complete\n\n---\n\n### 📍 Step 1: Identify the Stock\n\nUse the `API-post-database-query` tool to find the stock page in the Notion database. Match the `\"symbol\"` field in the input to the `\"Stock Ticker\"` property.\n\n```json\n{\n  \"database_id\": \"20ef056c191c80068fd5f728fee3bda0\",\n  \"filter\": {\n    \"property\": \"Stock Ticker\",\n    \"title\": {\n      \"equals\": \"symbol\"\n    }\n  }\n}\n```\n\n---\n\n### 🔄 Step 2: Update Existing Stock Entry\n\nIf a matching page is found:\n\n1. Extract the `page_id`\n2. Use `API-patch-page` to update the record\n3. Apply the following **intelligent update logic**:\n\n#### ✅ General Update Rules:\n\n* **Complete input?** ➔ Replace existing values\n* **Partial input?** ➔ Merge, preserving relevant prior data\n* Combine existing + new data where appropriate (e.g. summaries, insights)\n* Output must **always improve or enrich** the current entry\n\n#### 🔁 Candle Frame Conflict Logic (Red/Yellow):\n\nEach timeframe (Daily, Weekly, Monthly) must have **only one candle type** (Red or Yellow).\nWhen new candle data includes the **same timeframe** as existing data:\n\n* **Replace** the existing candle for that timeframe\n* Ensure **no duplication** of timeframe in `multi_select` values\n\n> Example:\n>\n> * Existing: `Red-Daily`, `Red-Weekly`, `Red-Monthly`\n> * New: `Yellow-Daily`\n> * Result: `Yellow-Daily`, `Red-Weekly`, `Red-Monthly`\n\n\n#### 🔁 Bullishnes level (Hot / Extreme Bullish / Bearish):\n**Each Stock can only have one values: Hot / Extreme Bullish / Bearish OR NO value at all**\nMake sure there is no double values for the same stock such as Hot and Extreme Bullish\n> Example:\n* Exisitng: Extreme Bullish\n* New: Hot\n* Result: Hot\n\n---\n\n#### 🔧 Sample Tool Payload (Patch):\n\n```json\n{\n  \"page_id\": \"PAGE_ID_OF_EXISTING_STOCK\",\n  \"properties\": {\n    \"Red/Yellow Candle\": {\n      \"multi_select\": [\n        { \"name\": \"Yellow-Daily\" },\n        { \"name\": \"Red-Weekly\" },\n        { \"name\": \"Red-Monthly\" }\n      ]\n    },\n    \"Volatility Hole\": {\n      \"checkbox\": true\n    },\n    \"Whale Accumulation\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Combined whale accumulation insight...\" } }\n      ]\n    },\n    \"Important Details\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Merged summary of existing + new info\" } }\n      ]\n    },\n    \"Hot Stocks\": {\n      \"multi_select\": [\n        { \"name\": \"Hot\" },\n        { \"name\": \"Extreme Bullish\" },\n        { \"name\": \"Bearish\" }\n      ]\n    },\n    \"Link\": {\n      \"url\": \"https://example.com/patreon\"\n    },\n    \"Support/Resistance\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Support Levels: 101, Resistance Levels: 120\" } }\n      ]\n    }\n  }\n}\n```\n\n---\n\n### 🔟 Step 3: Create New Stock Entry\n\nIf no existing page is found, use `API-post-page` to insert a new stock record using all relevant fields from the input.\n\n---\n\n### 🧠 Field Mapping & Update Strategy\n\n| Notion Property      | Input Key(s)                          | Type         | Smart Update Strategy                                                           |\n| -------------------- | ------------------------------------- | ------------ | ------------------------------------------------------------------------------- |\n| `Red/Yellow Candle`  | `red_candle`, `yellow_candle`         | Multi-select | Per timeframe, only one candle (Red or Yellow). Replace same-timeframe entries. |\n| `Volatility Hole`    | `volatility_hole`                     | Checkbox     | Set to true if present in input.                                                |\n| `Whale Accumulation` | `whale_accumulation`                  | Rich Text    | Merge insights unless new data is clearly more comprehensive.                   |\n| `Hot Stocks`         | `hot_stocks`                          | Multi-select | Merge, deduplicate, and sort for clarity.                                       |\n| `Important Details`  | `misc_data`                           | Rich Text    | Combine old and new, preserving clarity and avoiding repetition.                |\n| `Support/Resistance` | `support_levels`, `resistance_levels` | Rich Text    | Format: `\"Support Levels: X, Resistance Levels: Y\"`                             |\n| `Link`               | `patreon_link`                        | URL          | Replace if new link is provided.                                                |\n\n---\n\n### ⚠️ Special Considerations\n\n* Never overwrite valuable existing insights when input is **partial, vague, or outdated**\n* Always apply candle overwrite logic to prevent **timeframe duplication**\n* Confirm the **final state is cleaner, clearer, and more informative**\n\n---\n\n### ✅ Final Checks Before Completion\n\nEnsure the final page:\n\n* Does not include **conflicting candle values** for the same timeframe\n* Has no **missing critical fields**\n* Maintains a clean and logical structure\n* Contains **updated, accurate, and consolidated** stock insight\n\n---\n\nNow process the following stock object:\n\n```json\n{{ JSON.stringify($node[\"WaitforAgent\"].json[\"output.stocks\"]) }}\n```\n",
+        "options": {
+          "maxIterations": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        3904,
+        96
+      ],
+      "id": "955ad3cc-8a75-4031-9c44-6f28fbd0a088",
+      "name": "OpenRouter-Model-Router-2",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an **Expert Notion Stock Database Agent**.\n\nYour role is to maintain the Notion stock database (`ID: 20ef056c191c80068fd5f728fee3bda0`) with **high precision**, **contextual completeness**, and **data integrity**.\n\nYou will receive a structured JSON `stock` object. Your task is to **either update an existing stock entry or create a new one**, using advanced logic that:\n\n* Preserves valuable context\n* Merges partial updates intelligently\n* Replaces outdated or less relevant data when the new data is complete\n\n---\n\n### 📍 Step 1: Identify the Stock\n\nUse the `API-post-database-query` tool to find the stock page in the Notion database. Match the `\"symbol\"` field in the input to the `\"Stock Ticker\"` property.\n\n```json\n{\n  \"database_id\": \"20ef056c191c80068fd5f728fee3bda0\",\n  \"filter\": {\n    \"property\": \"Stock Ticker\",\n    \"title\": {\n      \"equals\": \"symbol\"\n    }\n  }\n}\n```\n\n---\n\n### 🔄 Step 2: Update Existing Stock Entry\n\nIf a matching page is found:\n\n1. Extract the `page_id`\n2. Use `API-patch-page` to update the record\n3. Apply the following **intelligent update logic**:\n\n#### ✅ General Update Rules:\n\n* **Complete input?** ➔ Replace existing values\n* **Partial input?** ➔ Merge, preserving relevant prior data\n* Combine existing + new data where appropriate (e.g. summaries, insights)\n* Output must **always improve or enrich** the current entry\n\n#### 🔁 Candle Frame Conflict Logic (Red/Yellow):\n\nEach timeframe (Daily, Weekly, Monthly) must have **only one candle type** (Red or Yellow).\nWhen new candle data includes the **same timeframe** as existing data:\n\n* **Replace** the existing candle for that timeframe\n* Ensure **no duplication** of timeframe in `multi_select` values\n\n> Example:\n>\n> * Existing: `Red-Daily`, `Red-Weekly`, `Red-Monthly`\n> * New: `Yellow-Daily`\n> * Result: `Yellow-Daily`, `Red-Weekly`, `Red-Monthly`\n\n\n#### 🔁 Bullishnes level (Hot / Extreme Bullish / Bearish):\n**Each Stock can only have one values: Hot / Extreme Bullish / Bearish OR NO value at all**\nMake sure there is no double values for the same stock such as Hot and Extreme Bullish\n> Example:\n* Exisitng: Extreme Bullish\n* New: Hot\n* Result: Hot\n\n---\n\n#### 🔧 Sample Tool Payload (Patch):\n\n```json\n{\n  \"page_id\": \"PAGE_ID_OF_EXISTING_STOCK\",\n  \"properties\": {\n    \"Red/Yellow Candle\": {\n      \"multi_select\": [\n        { \"name\": \"Yellow-Daily\" },\n        { \"name\": \"Red-Weekly\" },\n        { \"name\": \"Red-Monthly\" }\n      ]\n    },\n    \"Volatility Hole\": {\n      \"checkbox\": true\n    },\n    \"Whale Accumulation\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Combined whale accumulation insight...\" } }\n      ]\n    },\n    \"Important Details\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Merged summary of existing + new info\" } }\n      ]\n    },\n    \"Hot Stocks\": {\n      \"multi_select\": [\n        { \"name\": \"Hot\" },\n        { \"name\": \"Extreme Bullish\" },\n        { \"name\": \"Bearish\" }\n      ]\n    },\n    \"Link\": {\n      \"url\": \"https://example.com/patreon\"\n    },\n    \"Support/Resistance\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Support Levels: 101, Resistance Levels: 120\" } }\n      ]\n    }\n  }\n}\n```\n\n---\n\n### 🔟 Step 3: Create New Stock Entry\n\nIf no existing page is found, use `API-post-page` to insert a new stock record using all relevant fields from the input.\n\n---\n\n### 🧠 Field Mapping & Update Strategy\n\n| Notion Property      | Input Key(s)                          | Type         | Smart Update Strategy                                                           |\n| -------------------- | ------------------------------------- | ------------ | ------------------------------------------------------------------------------- |\n| `Red/Yellow Candle`  | `red_candle`, `yellow_candle`         | Multi-select | Per timeframe, only one candle (Red or Yellow). Replace same-timeframe entries. |\n| `Volatility Hole`    | `volatility_hole`                     | Checkbox     | Set to true if present in input.                                                |\n| `Whale Accumulation` | `whale_accumulation`                  | Rich Text    | Merge insights unless new data is clearly more comprehensive.                   |\n| `Hot Stocks`         | `hot_stocks`                          | Multi-select | Merge, deduplicate, and sort for clarity.                                       |\n| `Important Details`  | `misc_data`                           | Rich Text    | Combine old and new, preserving clarity and avoiding repetition.                |\n| `Support/Resistance` | `support_levels`, `resistance_levels` | Rich Text    | Format: `\"Support Levels: X, Resistance Levels: Y\"`                             |\n| `Link`               | `patreon_link`                        | URL          | Replace if new link is provided.                                                |\n\n---\n\n### ⚠️ Special Considerations\n\n* Never overwrite valuable existing insights when input is **partial, vague, or outdated**\n* Always apply candle overwrite logic to prevent **timeframe duplication**\n* Confirm the **final state is cleaner, clearer, and more informative**\n\n---\n\n### ✅ Final Checks Before Completion\n\nEnsure the final page:\n\n* Does not include **conflicting candle values** for the same timeframe\n* Has no **missing critical fields**\n* Maintains a clean and logical structure\n* Contains **updated, accurate, and consolidated** stock insight\n\n---\n\nNow process the following stock object:\n\n```json\n{{ JSON.stringify($json[\"output.stocks\"]) }}\n```\n",
+        "options": {
+          "maxIterations": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        2928,
+        192
+      ],
+      "id": "45419000-3125-4475-93fe-1f944a12ed39",
+      "name": "OpenRouter-Model-Router-1",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d6073160-93e6-4c46-bed6-85903746612c",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "OpenAI: Rate limit reached",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        3472,
+        160
+      ],
+      "id": "0bc6f2e3-bd5d-40c5-89b4-7687705b9e77",
+      "name": "Check Error"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "d6073160-93e6-4c46-bed6-85903746612c",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "OpenAI: Rate limit reached",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        4576,
+        112
+      ],
+      "id": "0059eb5f-e0a8-49fa-89bf-2475835f4bd5",
+      "name": "Check Error_2"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=You are an **Expert Notion Stock Database Agent**.\n\nYour role is to maintain the Notion stock database (`ID: 20ef056c191c80068fd5f728fee3bda0`) with **high precision**, **contextual completeness**, and **data integrity**.\n\nYou will receive a structured JSON `stock` object. Your task is to **either update an existing stock entry or create a new one**, using advanced logic that:\n\n* Preserves valuable context\n* Merges partial updates intelligently\n* Replaces outdated or less relevant data when the new data is complete\n\n---\n\n### 📍 Step 1: Identify the Stock\n\nUse the `API-post-database-query` tool to find the stock page in the Notion database. Match the `\"symbol\"` field in the input to the `\"Stock Ticker\"` property.\n\n```json\n{\n  \"database_id\": \"20ef056c191c80068fd5f728fee3bda0\",\n  \"filter\": {\n    \"property\": \"Stock Ticker\",\n    \"title\": {\n      \"equals\": \"symbol\"\n    }\n  }\n}\n```\n\n---\n\n### 🔄 Step 2: Update Existing Stock Entry\n\nIf a matching page is found:\n\n1. Extract the `page_id`\n2. Use `API-patch-page` to update the record\n3. Apply the following **intelligent update logic**:\n\n#### ✅ General Update Rules:\n\n* **Complete input?** ➔ Replace existing values\n* **Partial input?** ➔ Merge, preserving relevant prior data\n* Combine existing + new data where appropriate (e.g. summaries, insights)\n* Output must **always improve or enrich** the current entry\n\n#### 🔁 Candle Frame Conflict Logic (Red/Yellow):\n\nEach timeframe (Daily, Weekly, Monthly) must have **only one candle type** (Red or Yellow).\nWhen new candle data includes the **same timeframe** as existing data:\n\n* **Replace** the existing candle for that timeframe\n* Ensure **no duplication** of timeframe in `multi_select` values\n\n> Example:\n>\n> * Existing: `Red-Daily`, `Red-Weekly`, `Red-Monthly`\n> * New: `Yellow-Daily`\n> * Result: `Yellow-Daily`, `Red-Weekly`, `Red-Monthly`\n\n\n#### 🔁 Bullishnes level (Hot / Extreme Bullish / Bearish):\n**Each Stock can only have one values: Hot / Extreme Bullish / Bearish OR NO value at all**\nMake sure there is no double values for the same stock such as Hot and Extreme Bullish\n> Example:\n* Exisitng: Extreme Bullish\n* New: Hot\n* Result: Hot\n\n---\n\n#### 🔧 Sample Tool Payload (Patch):\n\n```json\n{\n  \"page_id\": \"PAGE_ID_OF_EXISTING_STOCK\",\n  \"properties\": {\n    \"Red/Yellow Candle\": {\n      \"multi_select\": [\n        { \"name\": \"Yellow-Daily\" },\n        { \"name\": \"Red-Weekly\" },\n        { \"name\": \"Red-Monthly\" }\n      ]\n    },\n    \"Volatility Hole\": {\n      \"checkbox\": true\n    },\n    \"Whale Accumulation\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Combined whale accumulation insight...\" } }\n      ]\n    },\n    \"Important Details\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Merged summary of existing + new info\" } }\n      ]\n    },\n    \"Hot Stocks\": {\n      \"multi_select\": [\n        { \"name\": \"Hot\" },\n        { \"name\": \"Extreme Bullish\" },\n        { \"name\": \"Bearish\" }\n      ]\n    },\n    \"Link\": {\n      \"url\": \"https://example.com/patreon\"\n    },\n    \"Support/Resistance\": {\n      \"rich_text\": [\n        { \"text\": { \"content\": \"Support Levels: 101, Resistance Levels: 120\" } }\n      ]\n    }\n  }\n}\n```\n\n---\n\n### 🔟 Step 3: Create New Stock Entry\n\nIf no existing page is found, use `API-post-page` to insert a new stock record using all relevant fields from the input.\n\n---\n\n### 🧠 Field Mapping & Update Strategy\n\n| Notion Property      | Input Key(s)                          | Type         | Smart Update Strategy                                                           |\n| -------------------- | ------------------------------------- | ------------ | ------------------------------------------------------------------------------- |\n| `Red/Yellow Candle`  | `red_candle`, `yellow_candle`         | Multi-select | Per timeframe, only one candle (Red or Yellow). Replace same-timeframe entries. |\n| `Volatility Hole`    | `volatility_hole`                     | Checkbox     | Set to true if present in input.                                                |\n| `Whale Accumulation` | `whale_accumulation`                  | Rich Text    | Merge insights unless new data is clearly more comprehensive.                   |\n| `Hot Stocks`         | `hot_stocks`                          | Multi-select | Merge, deduplicate, and sort for clarity.                                       |\n| `Important Details`  | `misc_data`                           | Rich Text    | Combine old and new, preserving clarity and avoiding repetition.                |\n| `Support/Resistance` | `support_levels`, `resistance_levels` | Rich Text    | Format: `\"Support Levels: X, Resistance Levels: Y\"`                             |\n| `Link`               | `patreon_link`                        | URL          | Replace if new link is provided.                                                |\n\n---\n\n### ⚠️ Special Considerations\n\n* Never overwrite valuable existing insights when input is **partial, vague, or outdated**\n* Always apply candle overwrite logic to prevent **timeframe duplication**\n* Confirm the **final state is cleaner, clearer, and more informative**\n\n---\n\n### ✅ Final Checks Before Completion\n\nEnsure the final page:\n\n* Does not include **conflicting candle values** for the same timeframe\n* Has no **missing critical fields**\n* Maintains a clean and logical structure\n* Contains **updated, accurate, and consolidated** stock insight\n\n---\n\nNow process the following stock object:\n\n```json\n{{ JSON.stringify($node[\"WaitforAgent\"].json[\"output.stocks\"]) }}\n```\n",
+        "options": {
+          "maxIterations": 1000
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 2,
+      "position": [
+        5008,
+        192
+      ],
+      "id": "531ee230-8477-40e2-b503-611503220d24",
+      "name": "OpenRouter-Model-Router-3",
+      "retryOnFail": true,
+      "executeOnce": false,
+      "waitBetweenTries": 5000,
+      "alwaysOutputData": true,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-coder:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        3632,
+        672
+      ],
+      "id": "860399a0-08b6-452f-9638-ada11ce1e4aa",
+      "name": "OpenRouter Chat Model_1",
+      "credentials": {
+        "openRouterApi": {
+          "id": "k3rtnPnzcf00Vwg0",
+          "name": "OpenRouter account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "model": "qwen/qwen3-235b-a22b:free",
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
+      "typeVersion": 1,
+      "position": [
+        4864,
+        992
+      ],
+      "id": "437df53c-abeb-4354-bad5-419b4540bd80",
+      "name": "OpenRouter Chat Model_2",
+      "credentials": {
+        "openRouterApi": {
+          "id": "k3rtnPnzcf00Vwg0",
+          "name": "OpenRouter account"
+        }
+      }
+    }
+  ],
+  "pinData": {
+    "Schedule Trigger": [
+      {
+        "json": {
+          "timestamp": "2025-07-01T09:30:22.123+03:00",
+          "Readable date": "July 1st 2025, 9:30:22 am",
+          "Readable time": "9:30:22 am",
+          "Day of week": "Tuesday",
+          "Year": "2025",
+          "Month": "July",
+          "Day of month": "01",
+          "Hour": "09",
+          "Minute": "30",
+          "Second": "22",
+          "Timezone": "Asia/Jerusalem (UTC+03:00)"
+        }
+      }
+    ]
+  },
+  "connections": {
+    "When clicking ‘Execute workflow’": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Gmail - Get Many",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Information Extractor": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "WaitforAgent": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model1": {
+      "ai_languageModel": [
+        []
+      ]
+    },
+    "AppendAllEmails": {
+      "main": [
+        [
+          {
+            "node": "Information Extractor",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "ListTools": {
+      "ai_tool": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-1",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "OpenRouter-Model-Router-2",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "OpenRouter-Model-Router-3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "NotionMCP": {
+      "ai_tool": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-1",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "OpenRouter-Model-Router-2",
+            "type": "ai_tool",
+            "index": 0
+          },
+          {
+            "node": "OpenRouter-Model-Router-3",
+            "type": "ai_tool",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Gmail - Get Many": {
+      "main": [
+        [
+          {
+            "node": "Function",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Function": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Delete",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get many messages",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger1": {
+      "main": [
+        [
+          {
+            "node": "Gmail - Get Many",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get many messages": {
+      "main": [
+        [
+          {
+            "node": "AppendAllEmails",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "WaitforAgent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-1",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter-Model-Router-1": {
+      "main": [
+        [
+          {
+            "node": "Check Error",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter-Model-Router-2": {
+      "main": [
+        [
+          {
+            "node": "Check Error_2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Error": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-2",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Error_2": {
+      "main": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-3",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter-Model-Router-3": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model_1": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-2",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenRouter Chat Model_2": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "OpenRouter-Model-Router-3",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f9941c62-2044-413b-b293-861eb8786d7a",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
+  },
+  "id": "sEegeYC05hALIU8L",
+  "tags": []
+}
