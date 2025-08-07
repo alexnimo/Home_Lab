@@ -26,7 +26,8 @@
         320
       ],
       "id": "14af005c-5276-40e0-8338-7da9a5d2e97a",
-      "name": "Information Extractor"
+      "name": "Information Extractor",
+      "retryOnFail": true
     },
     {
       "parameters": {
@@ -474,9 +475,18 @@
                 "type": "string",
                 "operation": "contains"
               }
+            },
+            {
+              "id": "f54c61c9-210a-46d2-94e5-7e1c443d6d3a",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "The resource you are requesting could not be found",
+              "operator": {
+                "type": "string",
+                "operation": "contains"
+              }
             }
           ],
-          "combinator": "and"
+          "combinator": "or"
         },
         "options": {}
       },
@@ -500,8 +510,8 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 2,
       "position": [
-        5008,
-        192
+        5088,
+        208
       ],
       "id": "531ee230-8477-40e2-b503-611503220d24",
       "name": "OpenRouter-Model-Router-3",
@@ -513,7 +523,7 @@
     },
     {
       "parameters": {
-        "model": "qwen/qwen3-coder:free",
+        "model": "moonshotai/kimi-k2:free",
         "options": {}
       },
       "type": "@n8n/n8n-nodes-langchain.lmChatOpenRouter",
@@ -864,7 +874,7 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f9941c62-2044-413b-b293-861eb8786d7a",
+  "versionId": "f0d74223-8b6a-4b6e-915d-e3c688205a70",
   "meta": {
     "templateCredsSetupCompleted": true,
     "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
