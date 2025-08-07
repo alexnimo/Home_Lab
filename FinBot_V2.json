@@ -1,0 +1,866 @@
+{
+  "name": "FinBot_V2",
+  "nodes": [
+    {
+      "parameters": {},
+      "type": "n8n-nodes-base.manualTrigger",
+      "typeVersion": 1,
+      "position": [
+        -1232,
+        448
+      ],
+      "id": "e5a1f32e-938a-400c-a1e3-0dfdbe5e0b6e",
+      "name": "When clicking ‘Test workflow’"
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "b813302e-5807-459f-954d-70d13e0c5c07",
+              "name": "promt",
+              "value": "=Transcribe the video. Return only the spoken dialogue, verbatim. Omit any additional text or descriptions. Transcribe it until you have reached the maximum token count. Do not split or stop until you have reached the end of the audio token limit.Do not add any greating message before the transcription or any text besides the transcription itself.",
+              "type": "string"
+            },
+            {
+              "id": "b1360487-2091-4237-9098-4441e7350ef2",
+              "name": "GeminiModel",
+              "value": "gemini-2.0-flash",
+              "type": "string"
+            },
+            {
+              "id": "74ce9450-57a8-453a-81b3-4bd0d50d2286",
+              "name": "max_tokens",
+              "value": "65535",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.4,
+      "position": [
+        -784,
+        352
+      ],
+      "id": "bccf20f5-2f9b-4bcf-b17b-6371f598d7e4",
+      "name": "Edit Fields"
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combineBy": "combineAll",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 3.1,
+      "position": [
+        -272,
+        240
+      ],
+      "id": "0fbf2892-7597-425e-808d-f3a43f1052f9",
+      "name": "Merge",
+      "executeOnce": false,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "1170cc6f-44e4-415a-89da-00924d5c5387",
+              "leftValue": "={{ $json.error }}",
+              "rightValue": "=null",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        944,
+        64
+      ],
+      "id": "a15b5f92-55df-488a-ab01-55caf9abd5fd",
+      "name": "If"
+    },
+    {
+      "parameters": {
+        "jsCode": "/**\n * Extracts the transcript text from a full HTML string using robust regular expressions.\n * This function is designed to be resilient to minor changes in HTML attributes and formatting, including newlines.\n * @param {string} html - The full HTML content as a string.\n * @returns {string} The cleaned, full transcript or an error message.\n */\nfunction extractTranscript(html) {\n  // 1. Find the main transcript container using the robust ID selector.\n  const divRegex = /<div[^>]*id=\"transcript\"[^>]*>(.*?)<\\/div>/s;\n  const divMatch = html.match(divRegex);\n\n  if (!divMatch || !divMatch[1]) {\n    return \"ERROR: Transcript container div with id='transcript' was not found.\";\n  }\n\n  const transcriptContent = divMatch[1];\n\n  // 2. Find all transcript segments, allowing for newlines inside the tags.\n  const segmentRegex = /<span.*?class=\"transcript-segment\".*?>(.*?)<\\/span>/gs;\n\n  // 3. Use matchAll to get every segment.\n  const allMatches = transcriptContent.matchAll(segmentRegex);\n  \n  let fullTranscript = \"\";\n  \n  // 4. Loop through all the found segments.\n  for (const match of allMatches) {\n    const segmentText = match[1];\n    const cleanedText = segmentText.replace(/<\\/?[^>]+(>|$)/g, \" \").trim();\n    if (cleanedText) {\n        fullTranscript += cleanedText + \" \";\n    }\n  }\n  \n  // 5. Check if we actually found any transcript text with the new regex.\n  if (fullTranscript.trim() === \"\") {\n    return \"ERROR: The transcript div was found, but no text segments could be extracted. The segment regex failed.\";\n  }\n\n  // 6. Final cleanup of any extra whitespace and return the result.\n  return fullTranscript.replace(/\\s+/g, ' ').trim();\n}\n\n\n// =================================================================\n// Main n8n Node Execution Logic - FINAL VERSION\n// =================================================================\n\n// Get the output from the direct input (the HTTP Request node)\nconst httpItems = $input.all();\n// Get the original data from the 'Loop Over Items' node before the HTTP Request was made.\nconst originalItems = $('Loop Over Items').all();\n\nconst results = [];\n\n// Use a classic for loop with an index to match the items from both inputs.\nfor (let i = 0; i < httpItems.length; i++) {\n  const httpItem = httpItems[i];\n  const originalItem = originalItems[i];\n\n  // This is the new, clean JSON object we will build.\n  // It starts with all the data from the 'Loop Over Items' node.\n  const newJson = { ...originalItem.json };\n  \n  const html = httpItem.json.data;\n\n  // Check if the HTML data exists in the current item\n  if (!html) {\n    newJson.full_transcript = null;\n    newJson.error = \"No HTML provided in the input item.\";\n  } else {\n    try {\n      // Run the extraction function\n      const transcriptResult = extractTranscript(html);\n\n      // Check if our function returned a controlled error message\n      if (transcriptResult.startsWith(\"ERROR:\")) {\n        newJson.full_transcript = null;\n        newJson.error = transcriptResult;\n      } else {\n        // Success! Add the full_transcript to our new object\n        newJson.full_transcript = transcriptResult;\n        newJson.error = null;\n      }\n    } catch (error) {\n      // This catches unexpected script errors\n      newJson.full_transcript = null;\n      newJson.error = `CRITICAL SCRIPT ERROR: ${error.message}`;\n    }\n  }\n  \n  // Add the newly constructed object to our results array.\n  results.push({ json: newJson });\n}\n\n// Return the clean list of results.\nreturn results;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        752,
+        -80
+      ],
+      "id": "fb4c25b2-0033-492e-93b7-8532e6bdc788",
+      "name": "Code"
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Purpose and Goals:\n\nAs an expert financial analyst, generate a comprehensive and structured summary of the financial transcript provided below.  \n\nApply your analytical lens to distill the key financial insights, data points, and recommendations presented.\n\nBehaviors and Rules:\n\nAnalyze the content of the provided YouTube video with the critical eye of a seasoned financial analyst. Generate a summary covering the following points in a structured format:\n\nVideo Identification:  \n\nVideo Title:  \n\nChannel Name:  \n\nPublish Date:\n\nCore Topic(s) & Thesis:  \n\nIdentify the main subject(s) discussed (e.g., stock market analysis, specific stock review, cryptocurrency news, economic trends, investment strategies, financial news commentary, product recommendations).  \n\nWhat is the central thesis or argument the creator is advancing?\n\nKey Discussion Points & Evidence:  \n\nList the primary arguments, insights, or pieces of information presented.  \n\nNote any supporting data, charts, or evidence used.  \n\nWhat are the main takeaways an informed investor should consider?\n\nAssets Mentioned & Analysis Context (If applicable):  \n\nList any specific stocks, cryptocurrencies, ETFs, indices, or other financial assets discussed.  \n\nFor each asset, provide a brief summary of the discussion, including any technical details (e.g., chart patterns, indicators, support/resistance levels), fundamental analysis (e.g., earnings, valuation metrics), news impact, or other relevant factors.  \n\nNote any recommendations or opinions expressed about the asset (e.g., bullish, bearish, buy, sell, hold).\n\nPredictions/Recommendations & Rationale (If applicable):  \n\nSummarize any explicit predictions, forecasts, or investment recommendations made, whether about specific assets or the market in general (e.g., buy, sell, hold, price targets, market trends).  \n\nOutline the rationale provided in the video for these recommendations.  \n\nNote any potential biases, risks, or limitations in the analysis as presented or omitted in the video.\n\nOverall Sentiment & Analytical Tone:  \n\nDescribe the general tone and underlying sentiment (e.g., bullish, bearish, neutral, optimistic, cautious, speculative, data-driven).  \n\nAssess the analytical rigor presented in the video.\n\nConcise Executive Summary:  \n\nProvide a brief paragraph (3-5 sentences) summarizing the video’s core message, key findings, and potential implications for investors, based on the content presented in the video.\n\nSkip any non-relevant discussions, self promotions, commercials, or advertising \n\nOutput Format:\n\nPlease present the summary in a clear, professional, and organized manner using bold headings (e.g., Video Identification) for each section as listed above. Use bullet points or numbered lists where appropriate to enhance readability.\n\n\nImportant:\nReturn only a valid JSON object matching the 'analyzeFinancialVideoContent' function schema provided. Do not include any extra text, explanations, or code blocks.\nThe top-level keys of the JSON object MUST be: \"video_identification\", \"core_topics_and_thesis\", \"key_discussion_points_and_evidence\", \"assets_mentioned_details\", \"predictions_and_recommendations\", \"overall_sentiment_and_tone\", \"executive_summary\".\nFor \"assets_mentioned_details\", each item MUST have \"asset_name_or_ticker\" and \"discussion_summary_and_analysis\".\nFor \"key_discussion_points_and_evidence\", use the keys \"primary_arguments_or_insights\", \"supporting_data_or_evidence_notes\", and \"main_takeaways_for_investors\".\n\n\nVideo Transcript:\n{{ $json.full_transcript }}",
+        "hasOutputParser": true,
+        "options": {}
+      },
+      "type": "@n8n/n8n-nodes-langchain.agent",
+      "typeVersion": 1.9,
+      "position": [
+        1504,
+        112
+      ],
+      "id": "6f94b817-bb7f-4f89-970c-bd55db7b060b",
+      "name": "AI Agent",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "modelName": "models/gemini-2.5-flash-preview-05-20",
+        "options": {
+          "temperature": 0.2,
+          "topK": 40
+        }
+      },
+      "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
+      "typeVersion": 1,
+      "position": [
+        1536,
+        336
+      ],
+      "id": "33a10f26-b7a9-4831-bb29-9796a946e5d3",
+      "name": "Google Gemini Chat Model",
+      "credentials": {
+        "googlePalmApi": {
+          "id": "AYq7323paoLj50L5",
+          "name": "Google Gemini(PaLM) Api account  - Transcription Summary"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "schemaType": "manual",
+        "inputSchema": "{\n  \"tools\": [\n    {\n      \"function_declarations\": [\n        {\n          \"name\": \"analyzeFinancialVideoContent\",\n          \"description\": \"As an expert financial analyst, extract and structure a comprehensive summary of financial video content. Focus on distilling key financial insights, data points, and recommendations.\",\n          \"parameters\": {\n            \"type\": \"object\",\n            \"required\": [\n              \"video_identification\",\n              \"core_topics_and_thesis\",\n              \"key_discussion_points_and_evidence\",\n              \"assets_mentioned_details\",\n              \"predictions_and_recommendations\",\n              \"overall_sentiment_and_tone\",\n              \"executive_summary\"\n            ],\n            \"properties\": {\n              \"video_identification\": {\n                \"type\": \"object\",\n                \"description\": \"Identifiable information about the video.\",\n                \"properties\": {\n                  \"video_title\": { \"type\": [\"string\", \"null\"], \"description\": \"The exact title of the video.\" },\n                  \"channel_name\": { \"type\": [\"string\", \"null\"], \"description\": \"The name of the YouTube channel.\" },\n                  \"publish_date\": { \"type\": [\"string\", \"null\"], \"description\": \"Publication date (YYYY-MM-DD).\" }\n                },\n                \"required\": [\"video_title\", \"channel_name\", \"publish_date\"]\n              },\n              \"core_topics_and_thesis\": {\n                \"type\": \"object\",\n                \"description\": \"The main subjects and central thesis of the video.\",\n                \"properties\": {\n                  \"main_subjects_discussed\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the primary financial subjects or themes discussed (e.g., 'stock market analysis', 'specific stock review').\"\n                  },\n                  \"central_thesis_or_argument\": {\n                    \"type\": \"string\",\n                    \"description\": \"The central argument or main point the video aims to convey.\"\n                  }\n                },\n                \"required\": [\"main_subjects_discussed\", \"central_thesis_or_argument\"]\n              },\n              \"key_discussion_points_and_evidence\": {\n                \"type\": \"object\",\n                \"description\": \"Key arguments, insights, evidence, and takeaways from the video.\",\n                \"properties\": {\n                  \"primary_arguments_or_insights\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the main arguments, insights, or pieces of information presented.\"\n                  },\n                  \"supporting_data_or_evidence_notes\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"Note any supporting data, charts, or evidence used, as a list of strings.\"\n                  },\n                  \"main_takeaways_for_investors\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List the main takeaways an informed investor should consider.\"\n                  }\n                },\n                \"required\": [\"primary_arguments_or_insights\", \"supporting_data_or_evidence_notes\", \"main_takeaways_for_investors\"]\n              },\n              \"assets_mentioned_details\": {\n                \"type\": \"array\",\n                \"description\": \"List of financial assets discussed. For each asset, provide a single descriptive string covering its context, analysis, and any recommendations.\",\n                \"items\": {\n                  \"type\": \"object\",\n                  \"properties\": {\n                     \"asset_name_or_ticker\": {\"type\": \"string\", \"description\": \"Name or ticker of the asset (e.g., 'Tesla (TSLA)', 'Bitcoin').\"},\n                     \"discussion_summary_and_analysis\": {\"type\": \"string\", \"description\": \"A comprehensive string summarizing the discussion about this asset, including any technical/fundamental points, news impact, and expressed opinions/recommendations.\"}\n                  },\n                  \"required\": [\"asset_name_or_ticker\", \"discussion_summary_and_analysis\"]\n                }\n              },\n              \"predictions_and_recommendations\": {\n                \"type\": \"object\",\n                \"description\": \"Overall predictions, recommendations, rationale, and biases.\",\n                \"properties\": {\n                  \"specific_predictions_or_forecasts\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List any explicit predictions or forecasts (e.g., 'Tesla to $300', 'Market will be volatile').\"\n                  },\n                  \"investment_actions_suggested\": {\n                     \"type\": \"array\",\n                     \"items\": {\"type\": \"string\"},\n                     \"description\": \"List any suggested investment actions (e.g., 'Buy Palantir', 'Take profit on Hims', 'Hold Google'). For each, include the asset if specified.\"\n                  },\n                  \"overall_rationale_for_outlook\": {\n                    \"type\": \"string\",\n                    \"description\": \"Summarize the main rationale provided for the predictions/recommendations.\"\n                  },\n                  \"identified_biases_risks_limitations\": {\n                    \"type\": \"array\",\n                    \"items\": { \"type\": \"string\" },\n                    \"description\": \"List any potential biases, risks, or limitations noted in the analysis.\"\n                  }\n                },\n                \"required\": [\"specific_predictions_or_forecasts\", \"investment_actions_suggested\", \"overall_rationale_for_outlook\", \"identified_biases_risks_limitations\"]\n              },\n              \"overall_sentiment_and_tone\": {\n                \"type\": \"object\",\n                \"description\": \"The overall sentiment and analytical tone of the video.\",\n                \"properties\": {\n                    \"sentiment_expressed\": { \"type\": \"string\", \"description\": \"Overall sentiment (e.g., 'Bullish', 'Cautiously Optimistic', 'Neutral').\"},\n                    \"analytical_tone_observed\": { \"type\": \"string\", \"description\": \"Prevailing analytical tone (e.g., 'Data-driven (technical)', 'Speculative', 'Commentary').\"},\n                    \"analytical_rigor_notes\": { \"type\": \"string\", \"description\": \"Brief notes on the analytical rigor observed.\"}\n                },\n                \"required\": [\"sentiment_expressed\", \"analytical_tone_observed\", \"analytical_rigor_notes\"]\n              },\n              \"executive_summary\": {\n                \"type\": \"string\",\n                \"description\": \"A concise (3-5 sentences) summary of the video's core message, key findings, and potential implications for investors.\"\n              }\n            }\n          }\n        }\n      ]\n    }\n  ]\n}"
+      },
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.2,
+      "position": [
+        1664,
+        336
+      ],
+      "id": "ee7f0aab-6e12-48db-9a38-c154d3a7e72f",
+      "name": "Structured Output Parser"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "id",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        -48,
+        240
+      ],
+      "id": "ef7d3ccd-2d24-4bf2-9665-cea471605927",
+      "name": "Split Out1"
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitInBatches",
+      "typeVersion": 3,
+      "position": [
+        176,
+        240
+      ],
+      "id": "bc2dd385-0e0b-419a-b047-a38dbd4ef1d6",
+      "name": "Loop Over Items",
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "jsCode": "// --- Configuration ---\nconst TELEGRAM_MAX_LENGTH = 4000;\n// --- End Configuration ---\n\n/**\n * Escapes characters that have special meaning in Telegram's HTML parse mode.\n * @param {string} text - The text to escape.\n * @returns {string} - The escaped text.\n */\nfunction escapeTelegramHTML(text) {\n  if (typeof text !== 'string' || !text) {\n    return '';\n  }\n  // For HTML mode, we only need to escape these three characters.\n  return text.replace(/&/g, '&')\n             .replace(/</g, '<')\n             .replace(/>/g, '>');\n}\n\nconst inputItems = $input.all();\nconst originalItems = $('Loop Over Items').all();\nconst allTelegramMessages = [];\n\nfor (let i = 0; i < inputItems.length; i++) {\n    const item = inputItems[i];\n    const originalItem = originalItems[i];\n    const mergedJson = { ...originalItem.json, ...item.json };\n    const currentVideoId = mergedJson.id;\n    const data = mergedJson.output || {};\n\n    const getSafeArray = (arr) => Array.isArray(arr) ? arr : [];\n\n    // --- Render Sections using HTML tags and the new escaping function ---\n\n    const videoTitle = mergedJson.title || data.video_identification?.video_title || 'N/A';\n    const channelName = mergedJson.channel_name || data.video_identification?.channel_name || 'N/A';\n    const publishDate = mergedJson.publish_date || data.video_identification?.publish_date || 'N/A';\n    const videoIdentification = `🎥 <b>Video Identification:</b>\\n• <b>Video Title:</b> ${escapeTelegramHTML(videoTitle)}\\n• <b>Channel Name:</b> ${escapeTelegramHTML(channelName)}\\n• <b>Publish Date:</b> ${escapeTelegramHTML(publishDate)}`;\n\n    const coreData = data.core_topics_and_thesis || {};\n    const mainSubjects = getSafeArray(coreData.main_subjects_discussed).map(s => escapeTelegramHTML(s));\n    const centralThesis = escapeTelegramHTML(coreData.central_thesis_or_argument || 'N/A');\n    const coreTopicsThesis = `💡 <b>Core Topic(s) & Thesis:</b>\\n• <b>Core Topic(s):</b>\\n${mainSubjects.length > 0 ? mainSubjects.map(s => `  • ${s}`).join('\\n') : '  • N/A'}\\n• <b>Thesis:</b> ${centralThesis}`;\n\n    const kdpData = data.key_discussion_points_and_evidence || {};\n    const primaryArgs = getSafeArray(kdpData.primary_arguments_or_insights).map(p => escapeTelegramHTML(p));\n    const mainTakeaways = getSafeArray(kdpData.main_takeaways_for_investors).map(t => escapeTelegramHTML(t));\n    const keyDiscussionPoints = `💬 <b>Key Discussion Points & Evidence:</b>\\n• <b>Primary Arguments/Insights:</b>\\n${primaryArgs.length > 0 ? primaryArgs.map(p => `  • ${p}`).join('\\n') : '  • N/A'}\\n• <b>Main Takeaways for Investors:</b>\\n${mainTakeaways.length > 0 ? mainTakeaways.map(t => `  • ${t}`).join('\\n') : '  • N/A'}`;\n\n    const assetsArray = getSafeArray(data.assets_mentioned_details);\n    const assetsMentioned = `💰 <b>Assets Mentioned & Analysis Context:</b>\\n${assetsArray.length > 0 ? assetsArray.map(asset => `• <b>Asset:</b> ${escapeTelegramHTML(asset.asset_name_or_ticker || 'N/A')}\\n  • <b>Discussion Summary:</b> ${escapeTelegramHTML(asset.discussion_summary_and_analysis || 'N/A')}`).join('\\n\\n') : '• No specific assets mentioned or analyzed.'}`;\n\n    const predData = data.predictions_and_recommendations || {};\n    const predictions = getSafeArray(predData.specific_predictions_or_forecasts).map(p => escapeTelegramHTML(p));\n    const actionsSuggested = getSafeArray(predData.investment_actions_suggested).map(a => escapeTelegramHTML(a));\n    const rationaleForRecs = escapeTelegramHTML(predData.overall_rationale_for_outlook || 'N/A');\n    const biasesRisks = getSafeArray(predData.identified_biases_risks_limitations).map(b => escapeTelegramHTML(b));\n    const predictionsRecommendations = `🔮 <b>Predictions/Recommendations & Rationale:</b>\\n• <b>Specific Predictions/Forecasts:</b>\\n${predictions.length > 0 ? predictions.map(p => `  • ${p}`).join('\\n') : '  • N/A'}\\n• <b>Investment Actions Suggested:</b>\\n${actionsSuggested.length > 0 ? actionsSuggested.map(a => `  • ${a}`).join('\\n') : '  • N/A'}\\n• <b>Overall Rationale:</b> ${rationaleForRecs}\\n• <b>Identified Biases/Risks:</b>\\n${biasesRisks.length > 0 ? biasesRisks.map(b => `  • ${b}`).join('\\n') : '  • N/A'}`;\n\n    const sentimentData = data.overall_sentiment_and_tone || {};\n    const sentimentText = escapeTelegramHTML(sentimentData.sentiment_expressed || 'N/A');\n    let sentimentEmoji = '⚪️';\n    if (sentimentText.toLowerCase().includes('bullish') || sentimentText.toLowerCase().includes('optimistic')) sentimentEmoji = '🟢';\n    else if (sentimentText.toLowerCase().includes('bearish') || sentimentText.toLowerCase().includes('cautious')) sentimentEmoji = '🔴';\n    else if (sentimentText.toLowerCase().includes('neutral') || sentimentText.toLowerCase().includes('mixed')) sentimentEmoji = '🟡';\n    const overallSentimentTone = `📊 <b>Overall Sentiment & Tone:</b>\\n• <b>Sentiment:</b> ${sentimentEmoji} ${sentimentText}\\n• <b>Analytical Tone:</b> ${escapeTelegramHTML(sentimentData.analytical_tone_observed || 'N/A')}\\n• <b>Analytical Rigor:</b> ${escapeTelegramHTML(sentimentData.analytical_rigor_notes || 'N/A')}`;\n\n    const executiveSummary = `📝 <b>Executive Summary:</b>\\n${escapeTelegramHTML(data.executive_summary || 'N/A')}`;\n\n    const fullMessage = [\n        videoIdentification,\n        coreTopicsThesis,\n        keyDiscussionPoints,\n        assetsMentioned,\n        predictionsRecommendations,\n        overallSentimentTone,\n        executiveSummary\n    ].join('\\n\\n────────────\\n\\n');\n\n    // Use the same robust splitting logic\n    if (fullMessage.length <= TELEGRAM_MAX_LENGTH) {\n        allTelegramMessages.push({ json: { text: fullMessage, video_id: currentVideoId } });\n    } else {\n        let remainingMessage = fullMessage;\n        let messageCounter = 1;\n\n        while (remainingMessage.length > 0) {\n            let part;\n            const prefix = `<b>(Part ${messageCounter++})</b>\\n\\n`;\n            const effectiveMaxLength = TELEGRAM_MAX_LENGTH - prefix.length;\n\n            if (remainingMessage.length <= effectiveMaxLength) {\n                part = remainingMessage;\n                remainingMessage = '';\n            } else {\n                let splitPoint = remainingMessage.substring(0, effectiveMaxLength).lastIndexOf('\\n\\n');\n                if (splitPoint === -1) { splitPoint = remainingMessage.substring(0, effectiveMaxLength).lastIndexOf('\\n'); }\n                if (splitPoint === -1) { splitPoint = remainingMessage.substring(0, effectiveMaxLength).lastIndexOf(' '); }\n                if (splitPoint === -1) { splitPoint = effectiveMaxLength; }\n                part = remainingMessage.substring(0, splitPoint);\n                remainingMessage = remainingMessage.substring(splitPoint).trim();\n            }\n            allTelegramMessages.push({ json: { text: prefix + part, video_id: currentVideoId } });\n        }\n    }\n}\n\nreturn allTelegramMessages;"
+      },
+      "type": "n8n-nodes-base.code",
+      "typeVersion": 2,
+      "position": [
+        1904,
+        112
+      ],
+      "id": "8902d939-7409-4ee3-9e32-728d0a14c922",
+      "name": "Concat All Items"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "fc754d2e-b45d-4abd-aa67-3c50a6b96ee5",
+              "leftValue": "={{ $json.ok }}",
+              "rightValue": "",
+              "operator": {
+                "type": "boolean",
+                "operation": "true",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": "={{ false }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        2352,
+        112
+      ],
+      "id": "0963dd81-4d42-41ac-8827-ec3107e67c9a",
+      "name": "If2"
+    },
+    {
+      "parameters": {
+        "aggregate": "aggregateAllItemData",
+        "destinationFieldName": "={{ $json.result.text }}",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.aggregate",
+      "typeVersion": 1,
+      "position": [
+        2592,
+        48
+      ],
+      "id": "119d6293-6bcb-4a29-be61-a0966449c476",
+      "name": "Aggregate"
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "minutes",
+              "minutesInterval": 45
+            }
+          ]
+        }
+      },
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.2,
+      "position": [
+        -1040,
+        -32
+      ],
+      "id": "3e714aa9-fa03-466c-86a2-a132cf8ef73f",
+      "name": "Schedule Trigger"
+    },
+    {
+      "parameters": {
+        "content": "### Rate Limit Requests in order to avoid quota issues",
+        "height": 80,
+        "width": 200
+      },
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        1104,
+        -160
+      ],
+      "id": "0b063f85-30fa-48dc-bc60-b7ecce0d293e",
+      "name": "Sticky Note1"
+    },
+    {
+      "parameters": {
+        "documentId": {
+          "__rl": true,
+          "value": "1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w",
+          "mode": "list",
+          "cachedResultName": "Yotutbe-Track",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit#gid=0"
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        -720,
+        32
+      ],
+      "id": "cc23dedc-7ad0-4219-9b22-217bb04a0ea2",
+      "name": "Get row(s) in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xsVabjvumVKMCbw6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "loose",
+            "version": 2
+          },
+          "conditions": [
+            {
+              "id": "3f3f7ef5-064b-44f4-9473-313ab3d5a673",
+              "leftValue": "=\n {{ $json.id }}",
+              "rightValue": "",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            },
+            {
+              "id": "2bca92fa-a04f-408f-b1b4-c3370ee28a85",
+              "leftValue": "={{ $json.processed }}",
+              "rightValue": "done",
+              "operator": {
+                "type": "string",
+                "operation": "notEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "looseTypeValidation": true,
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2.2,
+      "position": [
+        -464,
+        32
+      ],
+      "id": "9be4ff08-356f-4891-8305-9ef9d8b6a87d",
+      "name": "If3"
+    },
+    {
+      "parameters": {
+        "operation": "update",
+        "documentId": {
+          "__rl": true,
+          "value": "1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w",
+          "mode": "list",
+          "cachedResultName": "Yotutbe-Track",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit?usp=drivesdk"
+        },
+        "sheetName": {
+          "__rl": true,
+          "value": "gid=0",
+          "mode": "list",
+          "cachedResultName": "data",
+          "cachedResultUrl": "https://docs.google.com/spreadsheets/d/1O8BI7U4tu30eXkpf_kUGWBMw7ubC2K6WlDVQWIxie5w/edit#gid=0"
+        },
+        "columns": {
+          "mappingMode": "defineBelow",
+          "value": {
+            "processed": "done",
+            "id": "={{ $('Split Out').item.json.id }}"
+          },
+          "matchingColumns": [
+            "id"
+          ],
+          "schema": [
+            {
+              "id": "channelid",
+              "displayName": "channelid",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "channel_name",
+              "displayName": "channel_name",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "id",
+              "displayName": "id",
+              "required": false,
+              "defaultMatch": true,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": false
+            },
+            {
+              "id": "publish_date",
+              "displayName": "publish_date",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "createdTime",
+              "displayName": "createdTime",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "title",
+              "displayName": "title",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "link",
+              "displayName": "link",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true,
+              "removed": true
+            },
+            {
+              "id": "processed",
+              "displayName": "processed",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "string",
+              "canBeUsedToMatch": true
+            },
+            {
+              "id": "row_number",
+              "displayName": "row_number",
+              "required": false,
+              "defaultMatch": false,
+              "display": true,
+              "type": "number",
+              "canBeUsedToMatch": true,
+              "readOnly": true,
+              "removed": true
+            }
+          ],
+          "attemptToConvertTypes": false,
+          "convertFieldsToString": false
+        },
+        "options": {}
+      },
+      "type": "n8n-nodes-base.googleSheets",
+      "typeVersion": 4.6,
+      "position": [
+        2800,
+        240
+      ],
+      "id": "10f355fb-d6b1-4be1-8bc3-7afdcd01ac3a",
+      "name": "Update row in sheet",
+      "credentials": {
+        "googleSheetsOAuth2Api": {
+          "id": "xsVabjvumVKMCbw6",
+          "name": "Google Sheets account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "amount": 1,
+        "unit": "minutes"
+      },
+      "type": "n8n-nodes-base.wait",
+      "typeVersion": 1.1,
+      "position": [
+        1152,
+        -64
+      ],
+      "id": "020ccf4d-d74a-4f5b-a6b9-8e75b61c6bc9",
+      "name": "Wait",
+      "webhookId": "d02b1bbe-4890-4c41-80c1-f2afa1d11cb2"
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "full_transcript",
+        "include": "allOtherFields",
+        "options": {}
+      },
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1328,
+        64
+      ],
+      "id": "97b84fbc-4400-4d5a-aade-6bb60f89bbe1",
+      "name": "Split Out"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "=https://youtubetotranscript.com/transcript",
+        "sendHeaders": true,
+        "specifyHeaders": "=json",
+        "headerParameters": {
+          "parameters": [
+            {}
+          ]
+        },
+        "jsonHeaders": "{\n  \"Accept\": \"text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7\",\n  \"Accept-Language\": \"en-IL,en;q=0.9,he-IL;q=0.8,he;q=0.7,en-GB;q=0.6,en-US;q=0.5\",\n  \"Cache-Control\": \"max-age=0\",\n  \"Content-Type\": \"application/x-www-form-urlencoded\",\n  \"Origin\": \"https://youtubetotranscript.com\",\n  \"Referer\": \"https://youtubetotranscript.com/\",\n  \"User-Agent\": \"Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/138.0.0.0 Safari/537.36\"\n}\n",
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "youtube_url",
+              "value": "={{ $json.link }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e5f4a80a-9f1d-4535-873e-dd34aeb9b299",
+      "name": "Transcription_Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "position": [
+        544,
+        112
+      ],
+      "typeVersion": 4.2,
+      "alwaysOutputData": true,
+      "retryOnFail": true,
+      "waitBetweenTries": 5000,
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "chatId": "-1002644553287",
+        "text": "={{ $json.text }}",
+        "replyMarkup": "=none",
+        "forceReply": {},
+        "replyKeyboardOptions": {},
+        "replyKeyboardRemove": {},
+        "additionalFields": {
+          "appendAttribution": false,
+          "parse_mode": "HTML"
+        }
+      },
+      "type": "n8n-nodes-base.telegram",
+      "typeVersion": 1.2,
+      "position": [
+        2128,
+        112
+      ],
+      "id": "b1f2222a-7bb9-4c36-afb1-b5fe4702be30",
+      "name": "Send a text message",
+      "webhookId": "d2a95ebc-e3dc-4d05-88c7-22f43793f39e",
+      "credentials": {
+        "telegramApi": {
+          "id": "4xKtVBNrVxeYrwyB",
+          "name": "Telegram account"
+        }
+      },
+      "onError": "continueRegularOutput"
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "When clicking ‘Test workflow’": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Split Out1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Wait",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Code": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Concat All Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out1": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Loop Over Items": {
+      "main": [
+        [],
+        [
+          {
+            "node": "Transcription_Request",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Concat All Items": {
+      "main": [
+        [
+          {
+            "node": "Send a text message",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If2": {
+      "main": [
+        [
+          {
+            "node": "Aggregate",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        []
+      ]
+    },
+    "Aggregate": {
+      "main": [
+        [
+          {
+            "node": "Update row in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get row(s) in sheet",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get row(s) in sheet": {
+      "main": [
+        [
+          {
+            "node": "If3",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If3": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Update row in sheet": {
+      "main": [
+        [
+          {
+            "node": "Loop Over Items",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Wait": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Transcription_Request": {
+      "main": [
+        [
+          {
+            "node": "Code",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Send a text message": {
+      "main": [
+        [
+          {
+            "node": "If2",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f454ccf8-146b-4e44-8b80-c6aad7fbfc13",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
+  },
+  "id": "pOBO3ZKN9vRPNg1M",
+  "tags": []
+}
