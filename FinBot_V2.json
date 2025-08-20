@@ -1,15 +1,15 @@
 {
-  "name": "FinBot_V2",
+  "name": "FinBot_v2",
   "nodes": [
     {
       "parameters": {},
       "type": "n8n-nodes-base.manualTrigger",
       "typeVersion": 1,
       "position": [
-        -1232,
-        448
+        -2656,
+        640
       ],
-      "id": "e5a1f32e-938a-400c-a1e3-0dfdbe5e0b6e",
+      "id": "9bbfc03e-dbab-4ec3-b5f0-d58c724b2284",
       "name": "When clicking ‘Test workflow’"
     },
     {
@@ -41,10 +41,10 @@
       "type": "n8n-nodes-base.set",
       "typeVersion": 3.4,
       "position": [
-        -784,
-        352
+        -2208,
+        544
       ],
-      "id": "bccf20f5-2f9b-4bcf-b17b-6371f598d7e4",
+      "id": "f3a2ff41-e57c-4439-a121-ec69660583aa",
       "name": "Edit Fields"
     },
     {
@@ -56,10 +56,10 @@
       "type": "n8n-nodes-base.merge",
       "typeVersion": 3.1,
       "position": [
-        -272,
-        240
+        -1696,
+        432
       ],
-      "id": "0fbf2892-7597-425e-808d-f3a43f1052f9",
+      "id": "d6acdbf9-8ed7-4f98-ae41-3241793489a2",
       "name": "Merge",
       "executeOnce": false,
       "onError": "continueRegularOutput"
@@ -80,7 +80,8 @@
               "rightValue": "=null",
               "operator": {
                 "type": "string",
-                "operation": "notEquals"
+                "operation": "notExists",
+                "singleValue": true
               }
             }
           ],
@@ -91,23 +92,23 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        944,
-        64
+        -480,
+        256
       ],
-      "id": "a15b5f92-55df-488a-ab01-55caf9abd5fd",
+      "id": "b5a18a86-2283-4131-a05f-3c8b680d0d28",
       "name": "If"
     },
     {
       "parameters": {
-        "jsCode": "/**\n * Extracts the transcript text from a full HTML string using robust regular expressions.\n * This function is designed to be resilient to minor changes in HTML attributes and formatting, including newlines.\n * @param {string} html - The full HTML content as a string.\n * @returns {string} The cleaned, full transcript or an error message.\n */\nfunction extractTranscript(html) {\n  // 1. Find the main transcript container using the robust ID selector.\n  const divRegex = /<div[^>]*id=\"transcript\"[^>]*>(.*?)<\\/div>/s;\n  const divMatch = html.match(divRegex);\n\n  if (!divMatch || !divMatch[1]) {\n    return \"ERROR: Transcript container div with id='transcript' was not found.\";\n  }\n\n  const transcriptContent = divMatch[1];\n\n  // 2. Find all transcript segments, allowing for newlines inside the tags.\n  const segmentRegex = /<span.*?class=\"transcript-segment\".*?>(.*?)<\\/span>/gs;\n\n  // 3. Use matchAll to get every segment.\n  const allMatches = transcriptContent.matchAll(segmentRegex);\n  \n  let fullTranscript = \"\";\n  \n  // 4. Loop through all the found segments.\n  for (const match of allMatches) {\n    const segmentText = match[1];\n    const cleanedText = segmentText.replace(/<\\/?[^>]+(>|$)/g, \" \").trim();\n    if (cleanedText) {\n        fullTranscript += cleanedText + \" \";\n    }\n  }\n  \n  // 5. Check if we actually found any transcript text with the new regex.\n  if (fullTranscript.trim() === \"\") {\n    return \"ERROR: The transcript div was found, but no text segments could be extracted. The segment regex failed.\";\n  }\n\n  // 6. Final cleanup of any extra whitespace and return the result.\n  return fullTranscript.replace(/\\s+/g, ' ').trim();\n}\n\n\n// =================================================================\n// Main n8n Node Execution Logic - FINAL VERSION\n// =================================================================\n\n// Get the output from the direct input (the HTTP Request node)\nconst httpItems = $input.all();\n// Get the original data from the 'Loop Over Items' node before the HTTP Request was made.\nconst originalItems = $('Loop Over Items').all();\n\nconst results = [];\n\n// Use a classic for loop with an index to match the items from both inputs.\nfor (let i = 0; i < httpItems.length; i++) {\n  const httpItem = httpItems[i];\n  const originalItem = originalItems[i];\n\n  // This is the new, clean JSON object we will build.\n  // It starts with all the data from the 'Loop Over Items' node.\n  const newJson = { ...originalItem.json };\n  \n  const html = httpItem.json.data;\n\n  // Check if the HTML data exists in the current item\n  if (!html) {\n    newJson.full_transcript = null;\n    newJson.error = \"No HTML provided in the input item.\";\n  } else {\n    try {\n      // Run the extraction function\n      const transcriptResult = extractTranscript(html);\n\n      // Check if our function returned a controlled error message\n      if (transcriptResult.startsWith(\"ERROR:\")) {\n        newJson.full_transcript = null;\n        newJson.error = transcriptResult;\n      } else {\n        // Success! Add the full_transcript to our new object\n        newJson.full_transcript = transcriptResult;\n        newJson.error = null;\n      }\n    } catch (error) {\n      // This catches unexpected script errors\n      newJson.full_transcript = null;\n      newJson.error = `CRITICAL SCRIPT ERROR: ${error.message}`;\n    }\n  }\n  \n  // Add the newly constructed object to our results array.\n  results.push({ json: newJson });\n}\n\n// Return the clean list of results.\nreturn results;"
+        "jsCode": "/**\n * Extracts the transcript text from a full HTML string using robust regular expressions.\n * This function is designed to be resilient to minor changes in HTML attributes and formatting, including newlines.\n * @param {string} html - The full HTML content as a string.\n * @returns {string} The cleaned, full transcript or an error message.\n */\nfunction extractTranscript(html) {\n  // 1. Find the main transcript container using the robust ID selector.\n  const divRegex = /<div[^>]*id=\"transcript\"[^>]*>(.*?)<\\/div>/s;\n  const divMatch = html.match(divRegex);\n\n  if (!divMatch || !divMatch[1]) {\n    return \"ERROR: Transcript container div with id='transcript' was not found.\";\n  }\n\n  const transcriptContent = divMatch[1];\n\n  // 2. **THE FIX is here:** Find all transcript segments, allowing for multiple class names.\n  // We now look for a class attribute that CONTAINS \"transcript-segment\".\n  const segmentRegex = /<span.*?class=\".*?transcript-segment.*?\".*?>(.*?)<\\/span>/gs;\n\n  // 3. Use matchAll to get every segment.\n  const allMatches = transcriptContent.matchAll(segmentRegex);\n  \n  let fullTranscript = \"\";\n  \n  // 4. Loop through all the found segments.\n  for (const match of allMatches) {\n    const segmentText = match[1];\n    const cleanedText = segmentText.replace(/<\\/?[^>]+(>|$)/g, \" \").trim();\n    if (cleanedText) {\n        fullTranscript += cleanedText + \" \";\n    }\n  }\n  \n  // 5. Check if we actually found any transcript text with the new regex.\n  if (fullTranscript.trim() === \"\") {\n    return \"ERROR: The transcript div was found, but no text segments could be extracted. The segment regex failed.\";\n  }\n\n  // 6. Final cleanup of any extra whitespace and return the result.\n  return fullTranscript.replace(/\\s+/g, ' ').trim();\n}\n\n\n// =================================================================\n// Main n8n Node Execution Logic - This part is correct and does not need changes.\n// =================================================================\n\n// Get the output from the direct input (the HTTP Request node)\nconst httpItems = $input.all();\n// Get the original data from the 'Loop Over Items' node before the HTTP Request was made.\nconst originalItems = $('Loop Over Items').all();\n\nconst results = [];\n\n// Use a classic for loop with an index to match the items from both inputs.\nfor (let i = 0; i < httpItems.length; i++) {\n  const httpItem = httpItems[i];\n  const originalItem = originalItems[i];\n\n  // This is the new, clean JSON object we will build.\n  // It starts with all the data from the 'Loop Over Items' node.\n  const newJson = { ...originalItem.json };\n  \n  const html = httpItem.json.data;\n\n  // Check if the HTML data exists in the current item\n  if (!html) {\n    newJson.full_transcript = null;\n    newJson.error = \"No HTML provided in the input item.\";\n  } else {\n    try {\n      // Run the extraction function\n      const transcriptResult = extractTranscript(html);\n\n      // Check if our function returned a controlled error message\n      if (transcriptResult.startsWith(\"ERROR:\")) {\n        newJson.full_transcript = null;\n        newJson.error = transcriptResult;\n      } else {\n        // Success! Add the full_transcript to our new object\n        newJson.full_transcript = transcriptResult;\n        newJson.error = null;\n      }\n    } catch (error) {\n      // This catches unexpected script errors\n      newJson.full_transcript = null;\n      newJson.error = `CRITICAL SCRIPT ERROR: ${error.message}`;\n    }\n  }\n  \n  // Add the newly constructed object to our results array.\n  results.push({ json: newJson });\n}\n\n// Return the clean list of results.\nreturn results;"
       },
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        752,
-        -80
+        -672,
+        112
       ],
-      "id": "fb4c25b2-0033-492e-93b7-8532e6bdc788",
+      "id": "f5323d02-0acb-4e5e-b4bf-a56ed3a413cf",
       "name": "Code"
     },
     {
@@ -120,10 +121,10 @@
       "type": "@n8n/n8n-nodes-langchain.agent",
       "typeVersion": 1.9,
       "position": [
-        1504,
-        112
+        80,
+        304
       ],
-      "id": "6f94b817-bb7f-4f89-970c-bd55db7b060b",
+      "id": "26e1ad15-637f-48f1-ba46-a82680725bf0",
       "name": "AI Agent",
       "onError": "continueRegularOutput"
     },
@@ -138,15 +139,15 @@
       "type": "@n8n/n8n-nodes-langchain.lmChatGoogleGemini",
       "typeVersion": 1,
       "position": [
-        1536,
-        336
+        112,
+        528
       ],
-      "id": "33a10f26-b7a9-4831-bb29-9796a946e5d3",
+      "id": "9b312a44-63b7-4e82-bb4f-8dde4aea6295",
       "name": "Google Gemini Chat Model",
       "credentials": {
         "googlePalmApi": {
-          "id": "AYq7323paoLj50L5",
-          "name": "Google Gemini(PaLM) Api account  - Transcription Summary"
+          "id": "fbNB8R2CruaIjoli",
+          "name": "Google Gemini(PaLM) Api account"
         }
       }
     },
@@ -158,10 +159,10 @@
       "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
       "typeVersion": 1.2,
       "position": [
-        1664,
-        336
+        240,
+        528
       ],
-      "id": "ee7f0aab-6e12-48db-9a38-c154d3a7e72f",
+      "id": "6b9a232e-c2ab-4277-a46c-fa82e4cc05a5",
       "name": "Structured Output Parser"
     },
     {
@@ -173,10 +174,10 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        -48,
-        240
+        -1472,
+        432
       ],
-      "id": "ef7d3ccd-2d24-4bf2-9665-cea471605927",
+      "id": "66cafe51-cce9-4f41-ac13-e60686438315",
       "name": "Split Out1"
     },
     {
@@ -186,10 +187,10 @@
       "type": "n8n-nodes-base.splitInBatches",
       "typeVersion": 3,
       "position": [
-        176,
-        240
+        -1248,
+        432
       ],
-      "id": "bc2dd385-0e0b-419a-b047-a38dbd4ef1d6",
+      "id": "515989ec-0a52-4243-a2f1-6d5192dae607",
       "name": "Loop Over Items",
       "onError": "continueRegularOutput"
     },
@@ -200,10 +201,10 @@
       "type": "n8n-nodes-base.code",
       "typeVersion": 2,
       "position": [
-        1904,
-        112
+        480,
+        304
       ],
-      "id": "8902d939-7409-4ee3-9e32-728d0a14c922",
+      "id": "bfc6f6ac-7aac-4713-9b35-fbcd90328250",
       "name": "Concat All Items"
     },
     {
@@ -235,10 +236,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        2352,
-        112
+        928,
+        304
       ],
-      "id": "0963dd81-4d42-41ac-8827-ec3107e67c9a",
+      "id": "c0a85cb8-ff76-43d2-83f4-e3be7dc1fbb0",
       "name": "If2"
     },
     {
@@ -250,10 +251,10 @@
       "type": "n8n-nodes-base.aggregate",
       "typeVersion": 1,
       "position": [
-        2592,
-        48
+        1168,
+        240
       ],
-      "id": "119d6293-6bcb-4a29-be61-a0966449c476",
+      "id": "47190cbf-67bb-4b70-9ac2-8cbe7f96e469",
       "name": "Aggregate"
     },
     {
@@ -270,10 +271,10 @@
       "type": "n8n-nodes-base.scheduleTrigger",
       "typeVersion": 1.2,
       "position": [
-        -1040,
-        -32
+        -2464,
+        160
       ],
-      "id": "3e714aa9-fa03-466c-86a2-a132cf8ef73f",
+      "id": "40548c4b-fae9-486d-93ee-399db04a71ee",
       "name": "Schedule Trigger"
     },
     {
@@ -285,10 +286,10 @@
       "type": "n8n-nodes-base.stickyNote",
       "typeVersion": 1,
       "position": [
-        1104,
-        -160
+        -320,
+        32
       ],
-      "id": "0b063f85-30fa-48dc-bc60-b7ecce0d293e",
+      "id": "f1566685-9c07-4baa-aa3a-139c5ed48ab7",
       "name": "Sticky Note1"
     },
     {
@@ -312,14 +313,14 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
       "position": [
-        -720,
-        32
+        -2144,
+        224
       ],
-      "id": "cc23dedc-7ad0-4219-9b22-217bb04a0ea2",
+      "id": "91a78d73-c0c2-45a4-889c-babc21018f33",
       "name": "Get row(s) in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "xsVabjvumVKMCbw6",
+          "id": "vp6r3WvD9Wgp3NnW",
           "name": "Google Sheets account"
         }
       }
@@ -364,10 +365,10 @@
       "type": "n8n-nodes-base.if",
       "typeVersion": 2.2,
       "position": [
-        -464,
-        32
+        -1888,
+        224
       ],
-      "id": "9be4ff08-356f-4891-8305-9ef9d8b6a87d",
+      "id": "5b3df3d7-f882-46a7-a868-21c296fe2195",
       "name": "If3"
     },
     {
@@ -496,14 +497,14 @@
       "type": "n8n-nodes-base.googleSheets",
       "typeVersion": 4.6,
       "position": [
-        2800,
-        240
+        1376,
+        432
       ],
-      "id": "10f355fb-d6b1-4be1-8bc3-7afdcd01ac3a",
+      "id": "0fcd149c-fc3d-4130-b973-9526bcec0748",
       "name": "Update row in sheet",
       "credentials": {
         "googleSheetsOAuth2Api": {
-          "id": "xsVabjvumVKMCbw6",
+          "id": "vp6r3WvD9Wgp3NnW",
           "name": "Google Sheets account"
         }
       }
@@ -516,10 +517,10 @@
       "type": "n8n-nodes-base.wait",
       "typeVersion": 1.1,
       "position": [
-        1152,
-        -64
+        -272,
+        128
       ],
-      "id": "020ccf4d-d74a-4f5b-a6b9-8e75b61c6bc9",
+      "id": "403f2530-7dce-4709-a819-c0e858acb967",
       "name": "Wait",
       "webhookId": "d02b1bbe-4890-4c41-80c1-f2afa1d11cb2"
     },
@@ -532,10 +533,10 @@
       "type": "n8n-nodes-base.splitOut",
       "typeVersion": 1,
       "position": [
-        1328,
-        64
+        -96,
+        256
       ],
-      "id": "97b84fbc-4400-4d5a-aade-6bb60f89bbe1",
+      "id": "f94f1235-5722-4a2c-974e-2cdd28fc5f6f",
       "name": "Split Out"
     },
     {
@@ -561,12 +562,12 @@
         },
         "options": {}
       },
-      "id": "e5f4a80a-9f1d-4535-873e-dd34aeb9b299",
+      "id": "d3d0a753-b304-4d13-b102-1799825ca854",
       "name": "Transcription_Request",
       "type": "n8n-nodes-base.httpRequest",
       "position": [
-        544,
-        112
+        -880,
+        304
       ],
       "typeVersion": 4.2,
       "alwaysOutputData": true,
@@ -590,15 +591,15 @@
       "type": "n8n-nodes-base.telegram",
       "typeVersion": 1.2,
       "position": [
-        2128,
-        112
+        704,
+        304
       ],
-      "id": "b1f2222a-7bb9-4c36-afb1-b5fe4702be30",
+      "id": "da03b5f8-a392-48b1-be57-8efe3278a944",
       "name": "Send a text message",
       "webhookId": "d2a95ebc-e3dc-4d05-88c7-22f43793f39e",
       "credentials": {
         "telegramApi": {
-          "id": "4xKtVBNrVxeYrwyB",
+          "id": "nBeNLT3kuQJdCwuN",
           "name": "Telegram account"
         }
       },
@@ -653,8 +654,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Code": {
@@ -743,8 +743,7 @@
             "type": "main",
             "index": 0
           }
-        ],
-        []
+        ]
       ]
     },
     "Aggregate": {
@@ -856,11 +855,11 @@
   "settings": {
     "executionOrder": "v1"
   },
-  "versionId": "f454ccf8-146b-4e44-8b80-c6aad7fbfc13",
+  "versionId": "88f42e8d-ae6f-4931-83a1-5f07a3bbac03",
   "meta": {
     "templateCredsSetupCompleted": true,
-    "instanceId": "f38697ed2607b5772e1a625fcad179aa4b009d699f6288f484e1368aa1d2a646"
+    "instanceId": "d11d4298719538ef712023e9895a6cf17d73d3f85bc247c5fa8be99b806ab6df"
   },
-  "id": "pOBO3ZKN9vRPNg1M",
+  "id": "q5vmsqaUsgGFprxJ",
   "tags": []
 }
