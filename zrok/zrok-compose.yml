@@ -1,0 +1,22 @@
+services:
+  # start existing reserved share using host zrok environment
+  share:
+    image: ${ZROK_CONTAINER_IMAGE:-docker.io/openziti/zrok}
+    restart: unless-stopped
+    volumes:
+      - ${USERPROFILE}/.zrok:/home/ziggy/.zrok
+    environment:
+      PFXLOG_NO_JSON: "true"
+  #   ZROK_RESERVED_SHARE_NAME: ${ZROK_RESERVED_SHARE_NAME}
+ #    ZROK_TARGET: ${ZROK_TARGET}
+ #    ZROK_BACKEND_MODE: ${ZROK_BACKEND_MODE}
+      ZROK_UNIQUE_NAME: ${ZROK_UNIQUE_NAME}
+   #command: share reserved nimovid --headless
+
+  # demo server
+  zrok-test:
+    image: ${ZROK_CONTAINER_IMAGE:-docker.io/openziti/zrok}
+    command: test endpoint --address 0.0.0.0  # 9090
+
+volumes:
+  zrok_env:
